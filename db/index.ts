@@ -135,7 +135,7 @@ async function initializeSchema() {
   }
 
   const now = Date.now();
-  await db.batch([
+  const bootstrapStatements = [
     db
       .prepare(
         `INSERT OR IGNORE INTO users (
@@ -164,6 +164,33 @@ async function initializeSchema() {
          )`,
       )
       .bind(CODEX_ACTOR_ID, CODEX_ACTOR_ID, now),
-  ]);
+  ];
+
+  const initialAdminEmail = getInitialAdminEmail();
+  if (initialAdminEmail) {
+    bootstrapStatements.push(
+      db
+        .prepare(
+          `INSERT OR IGNORE INTO users (
+            id, email, full_name, account_type, role, status, profile_complete,
+            created_by, updated_by, created_at, updated_at
+          ) VALUES (
+            'initial-owner-admin', ?, 'Administrador proprietário', 'human',
+            'admin', 'active', 0, ?, ?, ?, ?
+          )`,
+        )
+        .bind(initialAdminEmail, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
+      db
+        .prepare(
+          `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)
+           SELECT ?, 'initial-owner-admin', 'user.owner_reserved', '{"loginEnabled":true}', ?
+           WHERE EXISTS (SELECT 1 FROM users WHERE id = 'initial-owner-admin')
+             AND NOT EXISTS (SELECT 1 FROM audit_logs WHERE action = 'user.owner_reserved')`,
+        )
+        .bind(CODEX_ACTOR_ID, now),
+    );
+  }
+
+  await db.batch(bootstrapStatements);
   await db.prepare('PRAGMA optimize').run();
 }

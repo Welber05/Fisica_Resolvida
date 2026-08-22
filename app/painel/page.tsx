@@ -32,6 +32,6 @@ export default async function DashboardPage() {
 }
 
 function auditLabel(action: string) {
-  const labels: Record<string, string> = { 'system.codex_actor_registered': 'Ator técnico registrado', 'user.bootstrap': 'Administrador inicial', 'profile.onboarding_completed': 'Cadastro concluído', 'profile.updated': 'Perfil atualizado', 'user.created': 'Usuário cadastrado', 'user.role_changed': 'Papel alterado', 'user.status_changed': 'Estado alterado', 'billing.updated': 'Faturamento atualizado', 'user.anonymized': 'Cadastro anonimizado' };
+  const labels: Record<string, string> = { 'system.codex_actor_registered': 'Ator técnico registrado', 'user.owner_reserved': 'Administrador proprietário reservado', 'user.bootstrap': 'Administrador inicial', 'profile.onboarding_completed': 'Cadastro concluído', 'profile.updated': 'Perfil atualizado', 'user.created': 'Usuário cadastrado', 'user.role_changed': 'Papel alterado', 'user.status_changed': 'Estado alterado', 'billing.updated': 'Faturamento atualizado', 'user.anonymized': 'Cadastro anonimizado' };
   return labels[action] || action;
 }

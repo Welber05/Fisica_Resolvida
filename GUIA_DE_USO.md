@@ -7,7 +7,7 @@ Este guia apresenta o acesso, o cadastro, o painel de gerenciamento, o faturamen
 1. Abra o endereço publicado do site.
 2. Selecione **Entrar com ChatGPT**.
 3. Use a sua própria conta ChatGPT. A plataforma não cria nem armazena senha própria.
-4. No primeiro acesso humano, a conta autenticada recebe o papel **Administrador**.
+4. O sistema vincula a identidade ao cadastro de **Administrador** reservado ao e-mail do proprietário.
 5. Preencha os dados obrigatórios: nome, telefone, nível escolar e endereço.
 6. Se desejar, envie uma imagem e informe Lattes, ORCID e redes sociais.
 7. Leia e aceite os Termos de Uso e o Aviso de Privacidade versionados para concluir o cadastro.
@@ -16,7 +16,7 @@ Este guia apresenta o acesso, o cadastro, o painel de gerenciamento, o faturamen
 
 ## 2. Identidades administrativas iniciais
 
-- **Proprietário:** é a primeira pessoa que entra no site e conclui o cadastro. É o único administrador humano inicial.
+- **Proprietário:** a conta administrativa é reservada previamente ao e-mail configurado no ambiente. No primeiro login correspondente, a identidade ChatGPT é vinculada e o cadastro obrigatório é concluído.
 - **Codex · automação:** é um ator técnico, marcado como conta técnica e sem login. Ele existe somente para identificar inicializações e automações na auditoria. Não possui senha, sessão ou acesso interativo.
 
 Essa separação evita uma conta compartilhada e permite distinguir ações humanas de operações técnicas. As mudanças no código também ficam registradas no histórico de commits do GitHub.
