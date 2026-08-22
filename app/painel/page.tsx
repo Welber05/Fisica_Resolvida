@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { dashboardMetrics, recentAuditLogs, requirePageUser } from '@/lib/user-service';
 import { roleLabels } from '@/lib/user-types';
+import { importedQuestions } from '@/app/questions';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,12 +10,15 @@ export default async function DashboardPage() {
   const canManageUsers = ['admin', 'manager'].includes(user.role);
   const metrics = canManageUsers ? await dashboardMetrics() : null;
   const logs = canManageUsers ? await recentAuditLogs() : [];
+  const editionCount = new Set(
+    importedQuestions.map((question) => `${question.institution}|${question.edition}`),
+  ).size;
   return (
     <main className="dashboard-page">
       <div className="dashboard-heading"><div><p className="eyebrow">BEM-VINDO, {roleLabels[user.role].toUpperCase()}</p><h1>Central de gestão</h1><p>Acompanhe cadastros, acessos, faturamento e conteúdo acadêmico.</p></div><span>{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
       <section className="metric-grid">
-        <article><span>∑</span><div><small>BANCO DE QUESTÕES</small><strong>625</strong><p>ITA e IME</p></div></article>
-        {metrics ? <><article><span>●</span><div><small>USUÁRIOS ATIVOS</small><strong>{metrics.active}</strong><p>de {metrics.users} cadastros</p></div></article><article><span>◆</span><div><small>EQUIPE</small><strong>{metrics.staff}</strong><p>professores e gestores</p></div></article><article><span>!</span><div><small>ACESSO RESTRITO</small><strong>{metrics.restricted}</strong><p>bloqueados ou suspensos</p></div></article></> : <><article><span>▣</span><div><small>EDIÇÕES</small><strong>39</strong><p>acervo conferido</p></div></article><article><span>▶</span><div><small>ROTEIROS</small><strong>625</strong><p>prontos para adaptar</p></div></article></>}
+        <article><span>∑</span><div><small>BANCO DE QUESTÕES</small><strong>{importedQuestions.length}</strong><p>ITA, IME e ENEM</p></div></article>
+        {metrics ? <><article><span>●</span><div><small>USUÁRIOS ATIVOS</small><strong>{metrics.active}</strong><p>de {metrics.users} cadastros</p></div></article><article><span>◆</span><div><small>EQUIPE</small><strong>{metrics.staff}</strong><p>professores e gestores</p></div></article><article><span>!</span><div><small>ACESSO RESTRITO</small><strong>{metrics.restricted}</strong><p>bloqueados ou suspensos</p></div></article></> : <><article><span>▣</span><div><small>EDIÇÕES</small><strong>{editionCount}</strong><p>acervo conferido</p></div></article><article><span>▶</span><div><small>ROTEIROS</small><strong>{importedQuestions.length}</strong><p>prontos para adaptar</p></div></article></>}
       </section>
       <section className="dashboard-columns">
         <article className="dashboard-panel"><header><div><p className="eyebrow">ACESSOS RÁPIDOS</p><h2>Operação da plataforma</h2></div></header><div className="quick-grid">

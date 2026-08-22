@@ -61,6 +61,7 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
     () => ({
       ITA: questions.filter((question) => question.institution === 'ITA').length,
       IME: questions.filter((question) => question.institution === 'IME').length,
+      ENEM: questions.filter((question) => question.institution === 'ENEM').length,
     }),
     [questions],
   );
@@ -277,7 +278,9 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
       institutionName:
         newInstitution === 'IME'
           ? 'Instituto Militar de Engenharia'
-          : 'Instituto Tecnológico de Aeronáutica',
+          : newInstitution === 'ENEM'
+            ? 'Exame Nacional do Ensino Médio'
+            : 'Instituto Tecnológico de Aeronáutica',
       edition: newEdition,
       phase: String(form.get('phase')),
       year: Number(form.get('year')),
@@ -368,7 +371,7 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
 
             <p className="label">INSTITUIÇÃO</p>
             <div className="institution-row">
-              {(['Todas', 'ITA', 'IME'] as InstitutionFilter[]).map((item) => (
+              {(['Todas', 'ITA', 'IME', 'ENEM'] as InstitutionFilter[]).map((item) => (
                 <button
                   key={item}
                   className={
@@ -622,7 +625,7 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
             <p className="eyebrow">GERADOR DE ATIVIDADES</p>
             <h1>Monte uma prova com questões reais.</h1>
             <p>
-              Combine questões oficiais do ITA e do IME em uma folha pronta
+              Combine questões oficiais do ITA, IME e ENEM em uma folha pronta
               para imprimir.
             </p>
           </div>
@@ -640,9 +643,10 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
                     chooseInstitution(event.target.value as InstitutionFilter)
                   }
                 >
-                  <option value="Todas">ITA + IME</option>
+                  <option value="Todas">ITA + IME + ENEM</option>
                   <option value="ITA">ITA</option>
                   <option value="IME">IME</option>
+                  <option value="ENEM">ENEM</option>
                 </select>
                 <select
                   aria-label="Edição no gerador"
@@ -797,6 +801,7 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
                 <select name="institution">
                   <option value="ITA">ITA</option>
                   <option value="IME">IME</option>
+                  <option value="ENEM">ENEM</option>
                 </select>
               </label>
               <label>

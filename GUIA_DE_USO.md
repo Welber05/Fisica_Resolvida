@@ -30,6 +30,8 @@ Essa separação evita uma conta compartilhada e permite distinguir ações huma
 5. Acesse **Roteiros** para preparar as resoluções em vídeo.
 6. Professores, gerentes e administradores podem acessar **Cadastrar questão**.
 
+No filtro **ENEM**, o acervo reúne apenas itens de Física das aplicações regulares disponíveis entre 2009 e 2024. Reaplicações, provas PPL e questões de Biologia ou Química não foram duplicadas. Cada item informa o gabarito conferido e permite abrir a página original do caderno usado na importação.
+
 ## 4. Minha conta
 
 1. Abra **Minha conta**.

@@ -1,6 +1,6 @@
 # Física Resolvida
 
-Plataforma de estudo e gestão de questões de Física do ITA e do IME, com correção interativa, PDFs, roteiros de vídeo, gerador de atividades, login, perfis, papéis administrativos e área de faturamento preparada para evolução futura.
+Plataforma de estudo e gestão de questões de Física do ITA, IME e ENEM, com correção interativa, fontes oficiais, roteiros de vídeo, gerador de atividades, login, perfis, papéis administrativos e área de faturamento preparada para evolução futura.
 
 ## Recursos principais
 
@@ -11,7 +11,7 @@ Plataforma de estudo e gestão de questões de Física do ITA e do IME, com corr
 - auditoria com separação entre operadores humanos e o ator técnico Codex;
 - perfil, endereço, avatar privado em R2 e informações de faturamento em D1;
 - Termos de Uso e Aviso de Privacidade versionados;
-- acervo ITA/IME, gerador de provas e roteiros de resolução.
+- acervo ITA/IME e questões exclusivamente de Física do ENEM regular (2009–2024), com gerador de provas e roteiros de resolução.
 
 O passo a passo funcional está em [GUIA_DE_USO.md](./GUIA_DE_USO.md).
 
@@ -37,4 +37,3 @@ No ambiente publicado, configure `INITIAL_ADMIN_EMAIL` com o e-mail verificado d
 ## Segurança e monetização
 
 O site deve permanecer privado durante a configuração inicial. O módulo financeiro atual é cadastral e não processa pagamentos nem armazena cartão/CVV. Antes da abertura pública ou cobrança, revise juridicamente os documentos, informe o canal oficial do controlador, configure um provedor de pagamentos e mova conteúdo premium e gabaritos para APIs/armazenamento protegidos no servidor.
-

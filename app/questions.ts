@@ -1,4 +1,6 @@
-export type Institution = 'ITA' | 'IME';
+import { enemQuestions } from './enem-questions';
+
+export type Institution = 'ITA' | 'IME' | 'ENEM';
 
 export type Question = {
   id: number;
@@ -26,6 +28,7 @@ export type Question = {
 };
 
 export const importedQuestions: Question[] = [
+  ...enemQuestions,
   {
     "id": 2026013,
     "code": "ITA 2026 · Q13",
