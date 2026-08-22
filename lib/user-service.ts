@@ -1,0 +1,407 @@
+import 'server-only';
+
+import { redirect } from 'next/navigation';
+import { getChatGPTUser, requireChatGPTUser, type ChatGPTUser } from '@/app/chatgpt-auth';
+import { CODEX_ACTOR_ID, ensureSchema, getD1, getInitialAdminEmail } from '@/db';
+import type { AccountStatus, AccountType, AppRole, AppUser, BillingProfile, SafeUser, SocialLinks } from './user-types';
+
+type UserRow = {
+  id: string;
+  auth_user_id: string | null;
+  email: string;
+  full_name: string;
+  phone: string;
+  education_level: string;
+  account_type: AccountType;
+  role: AppRole;
+  status: AccountStatus;
+  status_reason: string | null;
+  suspended_until: number | null;
+  profile_complete: number;
+  avatar_key: string | null;
+  lattes_url: string | null;
+  orcid: string | null;
+  social_links_json: string;
+  address_postal_code: string;
+  address_street: string;
+  address_number: string;
+  address_complement: string | null;
+  address_neighborhood: string | null;
+  address_city: string;
+  address_state: string;
+  address_country: string;
+  privacy_accepted_at: number | null;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
+};
+
+type BillingRow = {
+  user_id: string;
+  payer_type: 'individual' | 'company';
+  legal_name: string;
+  document_type: 'cpf' | 'cnpj' | 'other';
+  document_number: string | null;
+  company_name: string | null;
+  billing_email: string;
+  billing_phone: string;
+  postal_code: string;
+  street: string;
+  number: string;
+  complement: string | null;
+  neighborhood: string | null;
+  city: string;
+  state: string;
+  country: string;
+  plan_code: string;
+  subscription_status: string;
+  updated_at: number;
+};
+
+export class ApiAccessError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+export async function getOrCreateUser(identity: ChatGPTUser): Promise<AppUser> {
+  await ensureSchema();
+  const db = getD1();
+  const normalizedEmail = identity.email.trim().toLowerCase();
+
+  let row = await db
+    .prepare("SELECT * FROM users WHERE account_type = 'human' AND auth_user_id = ? AND deleted_at IS NULL LIMIT 1")
+    .bind(identity.userId)
+    .first<UserRow>();
+
+  if (!row) {
+    row = await db
+      .prepare("SELECT * FROM users WHERE account_type = 'human' AND email = ? AND deleted_at IS NULL LIMIT 1")
+      .bind(normalizedEmail)
+      .first<UserRow>();
+
+    if (row) {
+      if (row.auth_user_id && row.auth_user_id !== identity.userId) {
+        throw new ApiAccessError(409, 'Este e-mail já está vinculado a outra identidade.');
+      }
+      await db
+        .prepare('UPDATE users SET auth_user_id = ?, updated_at = ? WHERE id = ? AND auth_user_id IS NULL')
+        .bind(identity.userId, Date.now(), row.id)
+        .run();
+      row.auth_user_id = identity.userId;
+    }
+  }
+
+  if (!row) {
+    const id = crypto.randomUUID();
+    const now = Date.now();
+    const fullName = identity.fullName ?? '';
+    const initialAdminEmail = getInitialAdminEmail();
+    const canBootstrapAdmin = initialAdminEmail
+      ? normalizedEmail === initialAdminEmail
+      : process.env.NODE_ENV !== 'production' && identity.userId === 'local-preview-admin';
+    await db
+      .prepare(
+        `INSERT INTO users (
+          id, auth_user_id, email, full_name, role, status,
+          created_by, updated_by, created_at, updated_at
+        ) VALUES (
+          ?, ?, ?, ?,
+          CASE WHEN ? = 1 AND NOT EXISTS (
+            SELECT 1 FROM users
+            WHERE account_type = 'human' AND role = 'admin' AND deleted_at IS NULL
+          ) THEN 'admin' ELSE 'user' END,
+          'active', ?, ?, ?, ?
+        )`,
+      )
+      .bind(id, identity.userId, normalizedEmail, fullName, canBootstrapAdmin ? 1 : 0, id, id, now, now)
+      .run();
+    row = await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first<UserRow>();
+    await writeAudit(CODEX_ACTOR_ID, id, 'user.bootstrap', { role: row?.role ?? 'user' });
+  }
+
+  if (!row) throw new Error('Não foi possível carregar o cadastro do usuário.');
+
+  if (row.status === 'suspended' && row.suspended_until && row.suspended_until <= Date.now()) {
+    const now = Date.now();
+    await db
+      .prepare(
+        `UPDATE users SET status = 'active', status_reason = NULL,
+          suspended_until = NULL, updated_at = ?
+         WHERE id = ? AND status = 'suspended'
+           AND suspended_until IS NOT NULL AND suspended_until <= ?`,
+      )
+      .bind(now, row.id, now)
+      .run();
+    const refreshed = await db.prepare('SELECT * FROM users WHERE id = ?').bind(row.id).first<UserRow>();
+    if (!refreshed) throw new Error('Não foi possível atualizar o estado da conta.');
+    row = refreshed;
+  }
+
+  return mapUser(row);
+}
+
+export async function requirePageUser(
+  returnTo: string,
+  options: { roles?: AppRole[]; allowIncomplete?: boolean; allowRestricted?: boolean } = {},
+) {
+  const identity = await requireChatGPTUser(returnTo);
+  const user = await getOrCreateUser(identity);
+
+  if (user.accountType === 'system') redirect('/acesso?status=blocked');
+  if (!options.allowRestricted && user.status !== 'active') redirect(`/acesso?status=${user.status}`);
+  if (!options.allowIncomplete && !user.profileComplete) redirect('/cadastro');
+  if (options.roles && !options.roles.includes(user.role)) redirect('/');
+  return { identity, user };
+}
+
+export async function requireApiUser(
+  options: { roles?: AppRole[]; allowIncomplete?: boolean } = {},
+) {
+  const identity = await getChatGPTUser();
+  if (!identity) throw new ApiAccessError(401, 'Autenticação necessária.');
+  const user = await getOrCreateUser(identity);
+  if (user.accountType === 'system') {
+    throw new ApiAccessError(403, 'Contas técnicas não podem iniciar sessão.');
+  }
+  if (user.status !== 'active') throw new ApiAccessError(403, `Conta ${user.status}.`);
+  if (!options.allowIncomplete && !user.profileComplete) {
+    throw new ApiAccessError(409, 'Complete o cadastro para continuar.');
+  }
+  if (options.roles && !options.roles.includes(user.role)) {
+    throw new ApiAccessError(403, 'Você não tem permissão para esta ação.');
+  }
+  return { identity, user };
+}
+
+export async function listUsers(): Promise<AppUser[]> {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare("SELECT * FROM users WHERE deleted_at IS NULL ORDER BY account_type = 'system' DESC, created_at DESC LIMIT 500")
+    .all<UserRow>();
+  return result.results.map(mapUser);
+}
+
+export async function getUserById(id: string) {
+  await ensureSchema();
+  const row = await getD1()
+    .prepare('SELECT * FROM users WHERE id = ? AND deleted_at IS NULL')
+    .bind(id)
+    .first<UserRow>();
+  return row ? mapUser(row) : null;
+}
+
+export async function getBillingProfile(userId: string): Promise<BillingProfile> {
+  await ensureSchema();
+  const row = await getD1()
+    .prepare('SELECT * FROM billing_profiles WHERE user_id = ?')
+    .bind(userId)
+    .first<BillingRow>();
+  if (row) return mapBilling(row);
+  return {
+    userId,
+    payerType: 'individual',
+    legalName: '',
+    documentType: 'cpf',
+    documentNumber: '',
+    companyName: '',
+    billingEmail: '',
+    billingPhone: '',
+    postalCode: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    country: 'Brasil',
+    planCode: 'gratuito',
+    subscriptionStatus: 'sem_assinatura',
+    updatedAt: 0,
+  };
+}
+
+export async function listBillingProfiles() {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare(
+      `SELECT b.*, u.full_name, u.email, u.role, u.status
+       FROM billing_profiles b JOIN users u ON u.id = b.user_id
+       WHERE u.deleted_at IS NULL ORDER BY b.updated_at DESC LIMIT 500`,
+    )
+    .all<BillingRow & { full_name: string; email: string; role: AppRole; status: AccountStatus }>();
+  return result.results.map((row) => ({
+    ...mapBilling(row),
+    fullName: row.full_name,
+    email: row.email,
+    role: row.role,
+    status: row.status,
+  }));
+}
+
+export async function dashboardMetrics() {
+  await ensureSchema();
+  const db = getD1();
+  const [users, active, staff, restricted, billing] = await db.batch([
+    db.prepare("SELECT COUNT(*) AS total FROM users WHERE account_type = 'human' AND deleted_at IS NULL"),
+    db.prepare("SELECT COUNT(*) AS total FROM users WHERE account_type = 'human' AND status = 'active' AND deleted_at IS NULL"),
+    db.prepare("SELECT COUNT(*) AS total FROM users WHERE account_type = 'human' AND role != 'user' AND deleted_at IS NULL"),
+    db.prepare("SELECT COUNT(*) AS total FROM users WHERE account_type = 'human' AND status IN ('blocked','suspended') AND deleted_at IS NULL"),
+    db.prepare('SELECT COUNT(*) AS total FROM billing_profiles'),
+  ]);
+  const total = (result: D1Result) =>
+    Number((result.results[0] as { total?: number } | undefined)?.total ?? 0);
+  return {
+    users: total(users),
+    active: total(active),
+    staff: total(staff),
+    restricted: total(restricted),
+    billing: total(billing),
+  };
+}
+
+export async function recentAuditLogs(limit = 12) {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare(
+      `SELECT a.id, a.action, a.created_at,
+              actor.full_name AS actor_name, target.full_name AS target_name
+       FROM audit_logs a
+       LEFT JOIN users actor ON actor.id = a.actor_user_id
+       LEFT JOIN users target ON target.id = a.target_user_id
+       ORDER BY a.created_at DESC LIMIT ?`,
+    )
+    .bind(limit)
+    .all<{
+      id: number;
+      action: string;
+      created_at: number;
+      actor_name: string | null;
+      target_name: string | null;
+    }>();
+  return result.results.map((row) => ({
+    id: row.id,
+    action: row.action,
+    actorName: row.actor_name ?? 'Sistema',
+    targetName: row.target_name ?? '—',
+    createdAt: row.created_at,
+  }));
+}
+
+export async function writeAudit(
+  actorUserId: string | null,
+  targetUserId: string | null,
+  action: string,
+  details: Record<string, unknown> = {},
+) {
+  await ensureSchema();
+  await getD1()
+    .prepare(
+      `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)
+       VALUES (?, ?, ?, ?, ?)`,
+    )
+    .bind(actorUserId, targetUserId, action, JSON.stringify(details), Date.now())
+    .run();
+}
+
+export function canManageTarget(actor: AppUser, target: AppUser, nextRole?: AppRole) {
+  if (actor.id === target.id) return false;
+  if (target.accountType === 'system') return false;
+  if (actor.role === 'admin') return true;
+  if (actor.role !== 'manager') return false;
+  if (['admin', 'manager'].includes(target.role)) return false;
+  if (nextRole && ['admin', 'manager'].includes(nextRole)) return false;
+  return true;
+}
+
+export function safeUser(user: AppUser): SafeUser {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.fullName,
+    phone: user.phone,
+    educationLevel: user.educationLevel,
+    accountType: user.accountType,
+    role: user.role,
+    status: user.status,
+    statusReason: user.statusReason,
+    suspendedUntil: user.suspendedUntil,
+    profileComplete: user.profileComplete,
+    avatarUrl: user.avatarKey ? `/api/avatar/${user.id}` : null,
+    lattesUrl: user.lattesUrl,
+    orcid: user.orcid,
+    socialLinks: user.socialLinks,
+    address: user.address,
+    privacyAcceptedAt: user.privacyAcceptedAt,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
+}
+
+function mapUser(row: UserRow): AppUser {
+  let socialLinks: SocialLinks = {};
+  try {
+    socialLinks = JSON.parse(row.social_links_json || '{}') as SocialLinks;
+  } catch {
+    socialLinks = {};
+  }
+  return {
+    id: row.id,
+    authUserId: row.auth_user_id,
+    email: row.email,
+    fullName: row.full_name,
+    phone: row.phone,
+    educationLevel: row.education_level,
+    accountType: row.account_type ?? 'human',
+    role: row.role,
+    status: row.status,
+    statusReason: row.status_reason,
+    suspendedUntil: row.suspended_until,
+    profileComplete: Boolean(row.profile_complete),
+    avatarKey: row.avatar_key,
+    lattesUrl: row.lattes_url,
+    orcid: row.orcid,
+    socialLinks,
+    address: {
+      postalCode: row.address_postal_code,
+      street: row.address_street,
+      number: row.address_number,
+      complement: row.address_complement ?? '',
+      neighborhood: row.address_neighborhood ?? '',
+      city: row.address_city,
+      state: row.address_state,
+      country: row.address_country,
+    },
+    privacyAcceptedAt: row.privacy_accepted_at,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at,
+  };
+}
+
+function mapBilling(row: BillingRow): BillingProfile {
+  return {
+    userId: row.user_id,
+    payerType: row.payer_type,
+    legalName: row.legal_name,
+    documentType: row.document_type,
+    documentNumber: row.document_number ?? '',
+    companyName: row.company_name ?? '',
+    billingEmail: row.billing_email,
+    billingPhone: row.billing_phone,
+    postalCode: row.postal_code,
+    street: row.street,
+    number: row.number,
+    complement: row.complement ?? '',
+    neighborhood: row.neighborhood ?? '',
+    city: row.city,
+    state: row.state,
+    country: row.country,
+    planCode: row.plan_code,
+    subscriptionStatus: row.subscription_status,
+    updatedAt: row.updated_at,
+  };
+}

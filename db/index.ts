@@ -2,12 +2,168 @@ import { env } from 'cloudflare:workers';
 import { drizzle } from 'drizzle-orm/d1';
 import * as schema from './schema';
 
+let schemaReady: Promise<void> | null = null;
+
+export const CODEX_ACTOR_ID = 'system-codex-agent';
+
+export function getD1() {
+  if (!env.DB) throw new Error('O banco D1 `DB` não está disponível.');
+  return env.DB;
+}
+
+export function getFilesBucket() {
+  if (!env.FILES) throw new Error('O armazenamento R2 `FILES` não está disponível.');
+  return env.FILES;
+}
+
 export function getDb() {
-  if (!env.DB) {
-    throw new Error(
-      'Cloudflare D1 binding `DB` is unavailable. Set the `d1` field in .openai/hosting.json to `DB` or let your control plane inject the real binding values before using the database.',
-    );
+  return drizzle(getD1(), { schema });
+}
+
+export function getInitialAdminEmail() {
+  return env.INITIAL_ADMIN_EMAIL?.trim().toLowerCase() ?? '';
+}
+
+export async function ensureSchema() {
+  if (!schemaReady) {
+    schemaReady = initializeSchema().catch((error) => {
+      schemaReady = null;
+      throw error;
+    });
+  }
+  await schemaReady;
+}
+
+async function initializeSchema() {
+  const db = getD1();
+  const statements = [
+    `CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      auth_user_id TEXT,
+      email TEXT NOT NULL,
+      full_name TEXT NOT NULL DEFAULT '',
+      phone TEXT NOT NULL DEFAULT '',
+      education_level TEXT NOT NULL DEFAULT '',
+      account_type TEXT NOT NULL DEFAULT 'human' CHECK (account_type IN ('human','system')),
+      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','professor','manager','admin')),
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','blocked','suspended')),
+      status_reason TEXT,
+      suspended_until INTEGER,
+      profile_complete INTEGER NOT NULL DEFAULT 0,
+      avatar_key TEXT,
+      lattes_url TEXT,
+      orcid TEXT,
+      social_links_json TEXT NOT NULL DEFAULT '{}',
+      address_postal_code TEXT NOT NULL DEFAULT '',
+      address_street TEXT NOT NULL DEFAULT '',
+      address_number TEXT NOT NULL DEFAULT '',
+      address_complement TEXT,
+      address_neighborhood TEXT,
+      address_city TEXT NOT NULL DEFAULT '',
+      address_state TEXT NOT NULL DEFAULT '',
+      address_country TEXT NOT NULL DEFAULT 'Brasil',
+      privacy_accepted_at INTEGER,
+      created_by TEXT,
+      updated_by TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    )`,
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_auth_user_id ON users(auth_user_id)',
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)',
+    'CREATE INDEX IF NOT EXISTS idx_users_role_status ON users(role, status)',
+    `CREATE TABLE IF NOT EXISTS billing_profiles (
+      user_id TEXT PRIMARY KEY REFERENCES users(id),
+      payer_type TEXT NOT NULL DEFAULT 'individual',
+      legal_name TEXT NOT NULL DEFAULT '',
+      document_type TEXT NOT NULL DEFAULT 'cpf',
+      document_number TEXT,
+      company_name TEXT,
+      billing_email TEXT NOT NULL DEFAULT '',
+      billing_phone TEXT NOT NULL DEFAULT '',
+      postal_code TEXT NOT NULL DEFAULT '',
+      street TEXT NOT NULL DEFAULT '',
+      number TEXT NOT NULL DEFAULT '',
+      complement TEXT,
+      neighborhood TEXT,
+      city TEXT NOT NULL DEFAULT '',
+      state TEXT NOT NULL DEFAULT '',
+      country TEXT NOT NULL DEFAULT 'Brasil',
+      plan_code TEXT NOT NULL DEFAULT 'gratuito',
+      subscription_status TEXT NOT NULL DEFAULT 'sem_assinatura',
+      provider_customer_id TEXT,
+      updated_at INTEGER NOT NULL
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_billing_subscription ON billing_profiles(subscription_status)',
+    `CREATE TABLE IF NOT EXISTS account_status_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      target_user_id TEXT NOT NULL REFERENCES users(id),
+      previous_status TEXT NOT NULL,
+      new_status TEXT NOT NULL,
+      reason TEXT NOT NULL,
+      suspended_until INTEGER,
+      actor_user_id TEXT NOT NULL REFERENCES users(id),
+      created_at INTEGER NOT NULL
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_status_events_target ON account_status_events(target_user_id, created_at)',
+    `CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      actor_user_id TEXT,
+      target_user_id TEXT,
+      action TEXT NOT NULL,
+      details_json TEXT NOT NULL DEFAULT '{}',
+      created_at INTEGER NOT NULL
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_audit_created_at ON audit_logs(created_at)',
+    `CREATE TABLE IF NOT EXISTS consent_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      document_type TEXT NOT NULL,
+      document_version TEXT NOT NULL,
+      accepted INTEGER NOT NULL,
+      occurred_at INTEGER NOT NULL
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_consent_user ON consent_events(user_id, occurred_at)',
+  ];
+
+  await db.batch(statements.map((statement) => db.prepare(statement)));
+  const userColumns = await db.prepare('PRAGMA table_info(users)').all<{ name: string }>();
+  if (!userColumns.results.some((column) => column.name === 'account_type')) {
+    await db
+      .prepare("ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'human'")
+      .run();
   }
 
-  return drizzle(env.DB, { schema });
+  const now = Date.now();
+  await db.batch([
+    db
+      .prepare(
+        `INSERT OR IGNORE INTO users (
+          id, email, full_name, education_level, account_type,
+          role, status, profile_complete, created_by, updated_by, created_at, updated_at
+        ) VALUES (?, ?, ?, 'outro', 'system', 'admin', 'active', 1, ?, ?, ?, ?)`,
+      )
+      .bind(
+        CODEX_ACTOR_ID,
+        'codex-agent@system.invalid',
+        'Codex · automação',
+        CODEX_ACTOR_ID,
+        CODEX_ACTOR_ID,
+        now,
+        now,
+      ),
+    db
+      .prepare('UPDATE users SET auth_user_id = NULL WHERE id = ? AND account_type = \'system\'')
+      .bind(CODEX_ACTOR_ID),
+    db
+      .prepare(
+        `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)
+         SELECT ?, ?, 'system.codex_actor_registered', '{"loginEnabled":false}', ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM audit_logs WHERE action = 'system.codex_actor_registered'
+         )`,
+      )
+      .bind(CODEX_ACTOR_ID, CODEX_ACTOR_ID, now),
+  ]);
+  await db.prepare('PRAGMA optimize').run();
 }
