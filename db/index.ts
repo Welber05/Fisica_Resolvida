@@ -38,6 +38,8 @@ async function initializeSchema() {
   const db = getD1();
   const fabioInitialPasswordHash =
     'pbkdf2:SHA-256:120000:4b230985d6563be50a71e1029cc81118:eb33b587435e1cabcc80dc12ab5f82ff14645115eb9ff3dceebd7b1a93dd74c5';
+  const welberInitialPasswordHash =
+    'pbkdf2:SHA-256:120000:b60d343a10ed1f4b8c924f0eef2bce0b:65f7e32e724379e1cc323dc366aa1b8dc63ef9386f17f8629fdc24e3949f6924';
   const statements = [
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -297,6 +299,22 @@ async function initializeSchema() {
     ['functional_id', 'ALTER TABLE users ADD COLUMN functional_id TEXT'],
     ['cpf', 'ALTER TABLE users ADD COLUMN cpf TEXT'],
     ['password_hash', 'ALTER TABLE users ADD COLUMN password_hash TEXT'],
+    ['avatar_key', 'ALTER TABLE users ADD COLUMN avatar_key TEXT'],
+    ['lattes_url', 'ALTER TABLE users ADD COLUMN lattes_url TEXT'],
+    ['orcid', 'ALTER TABLE users ADD COLUMN orcid TEXT'],
+    ['social_links_json', "ALTER TABLE users ADD COLUMN social_links_json TEXT NOT NULL DEFAULT '{}'"],
+    ['address_postal_code', "ALTER TABLE users ADD COLUMN address_postal_code TEXT NOT NULL DEFAULT ''"],
+    ['address_street', "ALTER TABLE users ADD COLUMN address_street TEXT NOT NULL DEFAULT ''"],
+    ['address_number', "ALTER TABLE users ADD COLUMN address_number TEXT NOT NULL DEFAULT ''"],
+    ['address_complement', 'ALTER TABLE users ADD COLUMN address_complement TEXT'],
+    ['address_neighborhood', 'ALTER TABLE users ADD COLUMN address_neighborhood TEXT'],
+    ['address_city', "ALTER TABLE users ADD COLUMN address_city TEXT NOT NULL DEFAULT ''"],
+    ['address_state', "ALTER TABLE users ADD COLUMN address_state TEXT NOT NULL DEFAULT ''"],
+    ['address_country', "ALTER TABLE users ADD COLUMN address_country TEXT NOT NULL DEFAULT 'Brasil'"],
+    ['privacy_accepted_at', 'ALTER TABLE users ADD COLUMN privacy_accepted_at INTEGER'],
+    ['created_by', 'ALTER TABLE users ADD COLUMN created_by TEXT'],
+    ['updated_by', 'ALTER TABLE users ADD COLUMN updated_by TEXT'],
+    ['deleted_at', 'ALTER TABLE users ADD COLUMN deleted_at INTEGER'],
   ] as const;
   for (const [column, statement] of userColumnBackfills) {
     if (!userColumnNames.has(column)) await db.prepare(statement).run();
@@ -337,31 +355,55 @@ async function initializeSchema() {
         `INSERT INTO users (
           id, email, full_name, phone, education_level, account_type,
           role, status, professional_type, educator_verification_status,
+          institutional_email, functional_id, cpf, password_hash,
           profile_complete, privacy_accepted_at,
+          lattes_url, orcid, social_links_json,
+          address_postal_code, address_street, address_number,
+          address_complement, address_neighborhood, address_city,
+          address_state, address_country,
           created_by, updated_by, created_at, updated_at
         ) VALUES (
-          'owner-welber-admin', 'welber05@gmail.com', 'Welber', '+5527997886378',
+          'owner-welber-admin', 'welber05@gmail.com', 'Welber Merlin Cardoso', '+5527997886378',
           'professor', 'human', 'admin', 'active', 'education_professional',
-          'approved', 1, ?, ?, ?, ?, ?
+          'approved', 'welber.mcardoso@educador.edu.es.gov.br', '3682609', '08410974703', ?,
+          1, ?, 'http://lattes.cnpq.br/5720432646721315', '0000-0001-8755-9859',
+          '{"instagram":"https://www.instagram.com/welbermerlincardoso/","youtube":"https://www.youtube.com/@WelberMerlinCardoso","linkedin":"https://www.linkedin.com/in/welbermcardoso/","facebook":"https://www.facebook.com/welber05","x":"https://x.com/welber05"}',
+          '29830000', 'Rua P', '393', 'casa', 'Aeroporto', 'Nova Venécia', 'Espírito Santo', 'Brasil',
+          ?, ?, ?, ?
         )
         ON CONFLICT(email) DO UPDATE SET
-          full_name = CASE WHEN users.full_name = '' THEN excluded.full_name ELSE users.full_name END,
-          phone = CASE WHEN users.phone = '' THEN excluded.phone ELSE users.phone END,
-          education_level = CASE WHEN users.education_level = '' THEN excluded.education_level ELSE users.education_level END,
+          full_name = excluded.full_name,
+          phone = excluded.phone,
+          education_level = excluded.education_level,
           role = 'admin',
           status = 'active',
           status_reason = NULL,
           suspended_until = NULL,
-          professional_type = CASE WHEN users.professional_type = 'student' THEN excluded.professional_type ELSE users.professional_type END,
+          professional_type = excluded.professional_type,
           educator_verification_status = 'approved',
+          institutional_email = excluded.institutional_email,
+          functional_id = excluded.functional_id,
+          cpf = excluded.cpf,
+          password_hash = excluded.password_hash,
           profile_complete = 1,
           privacy_accepted_at = COALESCE(users.privacy_accepted_at, excluded.privacy_accepted_at),
+          lattes_url = excluded.lattes_url,
+          orcid = excluded.orcid,
+          social_links_json = excluded.social_links_json,
+          address_postal_code = excluded.address_postal_code,
+          address_street = excluded.address_street,
+          address_number = excluded.address_number,
+          address_complement = excluded.address_complement,
+          address_neighborhood = excluded.address_neighborhood,
+          address_city = excluded.address_city,
+          address_state = excluded.address_state,
+          address_country = excluded.address_country,
           deleted_at = NULL,
           updated_by = excluded.updated_by,
           updated_at = excluded.updated_at
         `,
       )
-      .bind(now, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
+      .bind(welberInitialPasswordHash, now, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
     db
       .prepare(
         `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)

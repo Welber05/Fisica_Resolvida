@@ -197,6 +197,15 @@ export class ApiAccessError extends Error {
 }
 
 export const OWNER_EMAIL = 'welber05@gmail.com';
+const OWNER_PASSWORD_HASH =
+  'pbkdf2:SHA-256:120000:b60d343a10ed1f4b8c924f0eef2bce0b:65f7e32e724379e1cc323dc366aa1b8dc63ef9386f17f8629fdc24e3949f6924';
+const OWNER_SOCIAL_LINKS = {
+  instagram: 'https://www.instagram.com/welbermerlincardoso/',
+  youtube: 'https://www.youtube.com/@WelberMerlinCardoso',
+  linkedin: 'https://www.linkedin.com/in/welbermcardoso/',
+  facebook: 'https://www.facebook.com/welber05',
+  x: 'https://x.com/welber05',
+};
 
 export function isOwnerEmail(email: string) {
   return email.trim().toLowerCase() === OWNER_EMAIL;
@@ -331,12 +340,34 @@ async function getOrCreateOwnerUser(db: D1Database, identity: ChatGPTUser): Prom
       `INSERT INTO users (
         id, auth_user_id, email, full_name, phone, education_level, account_type,
         role, status, professional_type, educator_verification_status,
+        institutional_email, functional_id, cpf, password_hash,
         profile_complete, privacy_accepted_at,
+        lattes_url, orcid, social_links_json,
+        address_postal_code, address_street, address_number,
+        address_complement, address_neighborhood, address_city,
+        address_state, address_country,
         created_by, updated_by, created_at, updated_at
       ) VALUES (?, ?, ?, ?, '+5527997886378', 'professor', 'human', 'admin', 'active',
-        'education_professional', 'approved', 1, ?, ?, ?, ?, ?)`,
+        'education_professional', 'approved',
+        'welber.mcardoso@educador.edu.es.gov.br', '3682609', '08410974703', ?,
+        1, ?,
+        'http://lattes.cnpq.br/5720432646721315', '0000-0001-8755-9859', ?,
+        '29830000', 'Rua P', '393', 'casa', 'Aeroporto', 'Nova Venécia',
+        'Espírito Santo', 'Brasil', ?, ?, ?, ?)`,
     )
-    .bind(id, identity.userId, normalizedEmail, identity.fullName ?? 'Welber', now, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now)
+    .bind(
+      id,
+      identity.userId,
+      normalizedEmail,
+      identity.fullName ?? 'Welber Merlin Cardoso',
+      OWNER_PASSWORD_HASH,
+      now,
+      JSON.stringify(OWNER_SOCIAL_LINKS),
+      CODEX_ACTOR_ID,
+      CODEX_ACTOR_ID,
+      now,
+      now,
+    )
     .run();
   const created = await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first<UserRow>();
   if (!created) throw new Error('Não foi possível criar o administrador proprietário.');
@@ -355,23 +386,48 @@ async function repairOwnerUserRow(db: D1Database, row: UserRow, identity: ChatGP
       `UPDATE users SET
         auth_user_id = COALESCE(?, auth_user_id),
         email = ?,
-        full_name = CASE WHEN full_name = '' THEN ? ELSE full_name END,
-        phone = CASE WHEN phone = '' THEN '+5527997886378' ELSE phone END,
-        education_level = CASE WHEN education_level = '' THEN 'professor' ELSE education_level END,
+        full_name = ?,
+        phone = '+5527997886378',
+        education_level = 'professor',
         role = 'admin',
         status = 'active',
         status_reason = NULL,
         suspended_until = NULL,
-        professional_type = CASE WHEN professional_type = 'student' THEN 'education_professional' ELSE professional_type END,
+        professional_type = 'education_professional',
         educator_verification_status = 'approved',
+        institutional_email = 'welber.mcardoso@educador.edu.es.gov.br',
+        functional_id = '3682609',
+        cpf = '08410974703',
+        password_hash = ?,
         profile_complete = 1,
         privacy_accepted_at = COALESCE(privacy_accepted_at, ?),
+        lattes_url = 'http://lattes.cnpq.br/5720432646721315',
+        orcid = '0000-0001-8755-9859',
+        social_links_json = ?,
+        address_postal_code = '29830000',
+        address_street = 'Rua P',
+        address_number = '393',
+        address_complement = 'casa',
+        address_neighborhood = 'Aeroporto',
+        address_city = 'Nova Venécia',
+        address_state = 'Espírito Santo',
+        address_country = 'Brasil',
         deleted_at = NULL,
         updated_by = ?,
         updated_at = ?
        WHERE id = ?`,
     )
-    .bind(identity?.userId ?? null, OWNER_EMAIL, identity?.fullName ?? 'Welber', now, CODEX_ACTOR_ID, now, row.id)
+    .bind(
+      identity?.userId ?? null,
+      OWNER_EMAIL,
+      identity?.fullName ?? 'Welber Merlin Cardoso',
+      OWNER_PASSWORD_HASH,
+      now,
+      JSON.stringify(OWNER_SOCIAL_LINKS),
+      CODEX_ACTOR_ID,
+      now,
+      row.id,
+    )
     .run();
   const refreshed = await db.prepare('SELECT * FROM users WHERE id = ?').bind(row.id).first<UserRow>();
   if (!refreshed) throw new Error('Não foi possível recarregar o administrador proprietário.');
