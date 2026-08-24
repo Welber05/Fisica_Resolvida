@@ -6,6 +6,14 @@ import type { SafeUser, TeacherSchool } from '@/lib/user-types';
 
 type View = 'questoes' | 'prova' | 'cadastro' | 'roteiros';
 type InstitutionFilter = 'Todas' | Question['institution'];
+type DifficultyFilter = 'Todas' | 'Fácil' | 'Médio' | 'Difícil';
+
+type BnccSkill = {
+  code: string;
+  label: string;
+  topics: string[];
+  keywords: string[];
+};
 
 const topicIcons: Record<string, string> = {
   'Mecânica': '↗',
@@ -30,6 +38,40 @@ const topicIcons: Record<string, string> = {
 };
 
 const institutions: InstitutionFilter[] = ['Todas', 'ITA', 'IME', 'ENEM', 'FTD'];
+const difficultyLevels: DifficultyFilter[] = ['Todas', 'Fácil', 'Médio', 'Difícil'];
+
+const bnccSkills: BnccSkill[] = [
+  {
+    code: 'EM13CNT101',
+    label: 'Energia, matéria e conservação',
+    topics: ['Mecânica', 'Dinâmica', 'Estática', 'Gravitação', 'Fluidos', 'Hidrostática', 'Hidrodinâmica', 'Termologia'],
+    keywords: ['energia', 'trabalho', 'potência', 'quantidade de movimento', 'colisão', 'calor', 'temperatura', 'pressão'],
+  },
+  {
+    code: 'EM13CNT103',
+    label: 'Radiações, ondas e aplicações',
+    topics: ['Ondulatória', 'Óptica', 'Óptica Geométrica', 'Física moderna'],
+    keywords: ['onda', 'frequência', 'comprimento de onda', 'interferência', 'difração', 'radiação', 'luz', 'fóton'],
+  },
+  {
+    code: 'EM13CNT106',
+    label: 'Energia elétrica e tecnologias',
+    topics: ['Eletricidade', 'Eletrodinâmica', 'Eletrostática', 'Eletromagnetismo'],
+    keywords: ['corrente', 'tensão', 'resistência', 'circuito', 'campo elétrico', 'campo magnético', 'indução'],
+  },
+  {
+    code: 'EM13CNT201',
+    label: 'Modelos, previsões e sistemas físicos',
+    topics: ['Física geral', 'Cinemática', 'Oscilações'],
+    keywords: ['modelo', 'gráfico', 'função', 'movimento', 'oscilador', 'equilíbrio', 'trajetória'],
+  },
+  {
+    code: 'EM13CNT301',
+    label: 'Investigação, dados e comunicação científica',
+    topics: [],
+    keywords: ['experimento', 'medida', 'dados', 'gráfico', 'estimativa', 'incerteza', 'evidência'],
+  },
+];
 
 function examKey(question: Question) {
   return question.institution + '|' + question.edition;
@@ -41,6 +83,27 @@ function examLabel(question: Question) {
 
 function safeName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function normalizedLevel(question: Question): DifficultyFilter {
+  const raw = question.level.toLowerCase();
+  if (raw.includes('fácil') || raw.includes('facil')) return 'Fácil';
+  if (raw.includes('méd') || raw.includes('med')) return 'Médio';
+  return 'Difícil';
+}
+
+function bnccForQuestion(question: Question) {
+  const haystack = `${question.title} ${question.text} ${question.topic}`.toLowerCase();
+  const matches = bnccSkills.filter(
+    (skill) =>
+      skill.topics.includes(question.topic) ||
+      skill.keywords.some((keyword) => haystack.includes(keyword.toLowerCase())),
+  );
+  return matches.length ? matches.slice(0, 2) : [bnccSkills[3]];
+}
+
+function bnccLabel(skill: BnccSkill) {
+  return `${skill.code} · ${skill.label}`;
 }
 
 export default function QuestionsClient({
@@ -57,6 +120,8 @@ export default function QuestionsClient({
   const [topic, setTopic] = useState('Todos');
   const [institution, setInstitution] = useState<InstitutionFilter>('Todas');
   const [edition, setEdition] = useState('Todas');
+  const [difficulty, setDifficulty] = useState<DifficultyFilter>('Todas');
+  const [bncc, setBncc] = useState('Todas');
   const [query, setQuery] = useState('');
   const [view, setView] = useState<View>('questoes');
   const [selected, setSelected] = useState<number[]>(
@@ -114,6 +179,23 @@ export default function QuestionsClient({
     [topicScope],
   );
 
+  const difficultyScope = useMemo(
+    () =>
+      topicScope.filter(
+        (question) => topic === 'Todos' || question.topic === topic,
+      ),
+    [topicScope, topic],
+  );
+
+  const bnccScope = useMemo(
+    () =>
+      difficultyScope.filter(
+        (question) =>
+          difficulty === 'Todas' || normalizedLevel(question) === difficulty,
+      ),
+    [difficultyScope, difficulty],
+  );
+
   const filtered = useMemo(
     () =>
       questions.filter(
@@ -121,16 +203,20 @@ export default function QuestionsClient({
           (institution === 'Todas' || question.institution === institution) &&
           (edition === 'Todas' || examKey(question) === edition) &&
           (topic === 'Todos' || question.topic === topic) &&
+          (difficulty === 'Todas' || normalizedLevel(question) === difficulty) &&
+          (bncc === 'Todas' ||
+            bnccForQuestion(question).some((skill) => skill.code === bncc)) &&
           (
             question.title +
             question.text +
             question.code +
-            question.sourceFile
+            question.sourceFile +
+            bnccForQuestion(question).map(bnccLabel).join(' ')
           )
             .toLowerCase()
             .includes(query.toLowerCase()),
       ),
-    [questions, institution, edition, topic, query],
+    [questions, institution, edition, topic, difficulty, bncc, query],
   );
 
   const roteiro =
@@ -198,6 +284,8 @@ export default function QuestionsClient({
     setInstitution(next);
     setEdition('Todas');
     setTopic('Todos');
+    setDifficulty('Todas');
+    setBncc('Todas');
     const first = questions.find(
       (question) => next === 'Todas' || question.institution === next,
     );
@@ -212,6 +300,8 @@ export default function QuestionsClient({
   function chooseEdition(next: string) {
     setEdition(next);
     setTopic('Todos');
+    setDifficulty('Todas');
+    setBncc('Todas');
     const first = questions.find(
       (question) =>
         (institution === 'Todas' || question.institution === institution) &&
@@ -250,6 +340,7 @@ export default function QuestionsClient({
       question.title,
       'Instituição: ' + question.institutionName,
       'Edição: ' + question.edition + ' · ' + question.phase,
+      'BNCC: ' + bnccForQuestion(question).map(bnccLabel).join('; '),
       'Fonte: ' + question.sourceFile + ', página ' + question.sourcePage,
       '',
       question.text,
@@ -491,7 +582,11 @@ export default function QuestionsClient({
               <button
                 key={item}
                 className={topic === item ? 'filter active' : 'filter'}
-                onClick={() => setTopic(item)}
+                onClick={() => {
+                  setTopic(item);
+                  setDifficulty('Todas');
+                  setBncc('Todas');
+                }}
               >
                 <span>{topicIcons[item] || '•'}</span>
                 {item}
@@ -503,6 +598,45 @@ export default function QuestionsClient({
                 </b>
               </button>
             ))}
+
+            <p className="label">CLASSIFICAÇÃO</p>
+            <div className="difficulty-row">
+              {difficultyLevels.map((item) => (
+                <button
+                  key={item}
+                  className={difficulty === item ? 'difficulty active' : 'difficulty'}
+                  onClick={() => {
+                    setDifficulty(item);
+                    setBncc('Todas');
+                  }}
+                >
+                  <span>{item}</span>
+                  <b>
+                    {
+                      difficultyScope.filter(
+                        (question) =>
+                          item === 'Todas' || normalizedLevel(question) === item,
+                      ).length
+                    }
+                  </b>
+                </button>
+              ))}
+            </div>
+
+            <p className="label">BNCC · HABILIDADES</p>
+            <select
+              className="year-select"
+              aria-label="Filtrar por habilidade da BNCC"
+              value={bncc}
+              onChange={(event) => setBncc(event.target.value)}
+            >
+              <option value="Todas">Todas as habilidades</option>
+              {bnccSkills.map((skill) => (
+                <option key={skill.code} value={skill.code}>
+                  {bnccLabel(skill)} ({bnccScope.filter((question) => bnccForQuestion(question).some((item) => item.code === skill.code)).length})
+                </option>
+              ))}
+            </select>
             <div className="generator-card">
               <span>✦</span>
               <h3>{questions.length} questões importadas</h3>
@@ -534,6 +668,11 @@ export default function QuestionsClient({
                 {active.institution}
               </span>
               <span className="level">● {active.level}</span>
+              {bnccForQuestion(active).map((skill) => (
+                <span className="bncc-chip" key={skill.code}>
+                  {bnccLabel(skill)}
+                </span>
+              ))}
               <span
                 className={
                   active.status === 'Anulada' ? 'annulled' : 'imported'
@@ -721,6 +860,32 @@ export default function QuestionsClient({
                   {editions.map((item) => (
                     <option key={item.key} value={item.key}>
                       {item.label}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Dificuldade no gerador"
+                  value={difficulty}
+                  onChange={(event) => {
+                    setDifficulty(event.target.value as DifficultyFilter);
+                    setBncc('Todas');
+                  }}
+                >
+                  {difficultyLevels.map((item) => (
+                    <option key={item} value={item}>
+                      {item === 'Todas' ? 'Todas as dificuldades' : item}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  aria-label="Habilidade BNCC no gerador"
+                  value={bncc}
+                  onChange={(event) => setBncc(event.target.value)}
+                >
+                  <option value="Todas">Todas as habilidades BNCC</option>
+                  {bnccSkills.map((skill) => (
+                    <option key={skill.code} value={skill.code}>
+                      {bnccLabel(skill)}
                     </option>
                   ))}
                 </select>
