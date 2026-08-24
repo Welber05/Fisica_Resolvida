@@ -18,7 +18,7 @@ export default async function ManagementLayout({ children }: { children: React.R
           <Link href="/painel">Visão geral</Link>
           {canManageUsers && <Link href="/painel/usuarios">Usuários e equipe</Link>}
           {canManageUsers && <Link href="/painel/faturamento">Faturamento</Link>}
-          <Link href="/">Conteúdo acadêmico</Link>
+          <Link href="/painel/conteudo">Conteúdo acadêmico</Link>
           <Link href="/ajuda">Guia de uso</Link>
         </nav>
         <div className="management-user"><div className="avatar">{user.avatarKey ? <img src={`/api/avatar/${user.id}`} alt="" /> : initials}</div><div><strong>{user.fullName}</strong><span>{roleLabels[user.role]}</span></div></div>

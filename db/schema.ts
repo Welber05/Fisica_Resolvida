@@ -108,6 +108,68 @@ export const billingProfiles = sqliteTable(
   (table) => [index('idx_billing_subscription').on(table.subscriptionStatus)],
 );
 
+export const billingPlans = sqliteTable(
+  'billing_plans',
+  {
+    id: text('id').primaryKey(),
+    code: text('code').notNull(),
+    name: text('name').notNull(),
+    licenseType: text('license_type').notNull().default('individual'),
+    billingCycle: text('billing_cycle').notNull().default('monthly'),
+    priceCents: integer('price_cents').notNull().default(0),
+    currency: text('currency').notNull().default('BRL'),
+    maxUsers: integer('max_users').notNull().default(1),
+    featuresJson: text('features_json').notNull().default('[]'),
+    status: text('status').notNull().default('active'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    deletedAt: integer('deleted_at'),
+  },
+  (table) => [
+    uniqueIndex('idx_billing_plans_code').on(table.code),
+    index('idx_billing_plans_status').on(table.status),
+  ],
+);
+
+export const paymentMethods = sqliteTable(
+  'payment_methods',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    methodType: text('method_type').notNull().default('pix'),
+    provider: text('provider').notNull().default('manual'),
+    instructionsJson: text('instructions_json').notNull().default('{}'),
+    status: text('status').notNull().default('active'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    deletedAt: integer('deleted_at'),
+  },
+  (table) => [index('idx_payment_methods_status').on(table.status)],
+);
+
+export const academicContentItems = sqliteTable(
+  'academic_content_items',
+  {
+    id: text('id').primaryKey(),
+    title: text('title').notNull(),
+    kind: text('kind').notNull().default('question_set'),
+    institution: text('institution').notNull().default('Geral'),
+    topic: text('topic').notNull().default('Física geral'),
+    edition: text('edition').notNull().default(''),
+    status: text('status').notNull().default('draft'),
+    ownerUserId: text('owner_user_id').references(() => users.id),
+    sourceReference: text('source_reference'),
+    notes: text('notes'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    deletedAt: integer('deleted_at'),
+  },
+  (table) => [
+    index('idx_academic_content_status').on(table.status),
+    index('idx_academic_content_institution').on(table.institution, table.edition),
+  ],
+);
+
 export const accountStatusEvents = sqliteTable(
   'account_status_events',
   {

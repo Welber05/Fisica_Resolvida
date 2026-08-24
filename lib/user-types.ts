@@ -93,6 +93,47 @@ export type TeacherSchool = {
   updatedAt: number;
 };
 
+export type BillingPlan = {
+  id: string;
+  code: string;
+  name: string;
+  licenseType: string;
+  billingCycle: string;
+  priceCents: number;
+  currency: string;
+  maxUsers: number;
+  features: string[];
+  status: 'active' | 'inactive';
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type PaymentMethod = {
+  id: string;
+  name: string;
+  methodType: string;
+  provider: string;
+  instructions: Record<string, string>;
+  status: 'active' | 'inactive';
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type AcademicContentItem = {
+  id: string;
+  title: string;
+  kind: string;
+  institution: string;
+  topic: string;
+  edition: string;
+  status: 'draft' | 'review' | 'published' | 'archived';
+  ownerUserId: string | null;
+  sourceReference: string;
+  notes: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export const roleLabels: Record<AppRole, string> = {
   user: 'Usuário',
   professor: 'Professor',

@@ -119,6 +119,52 @@ async function initializeSchema() {
       updated_at INTEGER NOT NULL
     )`,
     'CREATE INDEX IF NOT EXISTS idx_billing_subscription ON billing_profiles(subscription_status)',
+    `CREATE TABLE IF NOT EXISTS billing_plans (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      name TEXT NOT NULL,
+      license_type TEXT NOT NULL DEFAULT 'individual',
+      billing_cycle TEXT NOT NULL DEFAULT 'monthly',
+      price_cents INTEGER NOT NULL DEFAULT 0,
+      currency TEXT NOT NULL DEFAULT 'BRL',
+      max_users INTEGER NOT NULL DEFAULT 1,
+      features_json TEXT NOT NULL DEFAULT '[]',
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    )`,
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_billing_plans_code ON billing_plans(code)',
+    'CREATE INDEX IF NOT EXISTS idx_billing_plans_status ON billing_plans(status)',
+    `CREATE TABLE IF NOT EXISTS payment_methods (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      method_type TEXT NOT NULL DEFAULT 'pix',
+      provider TEXT NOT NULL DEFAULT 'manual',
+      instructions_json TEXT NOT NULL DEFAULT '{}',
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_payment_methods_status ON payment_methods(status)',
+    `CREATE TABLE IF NOT EXISTS academic_content_items (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      kind TEXT NOT NULL DEFAULT 'question_set',
+      institution TEXT NOT NULL DEFAULT 'Geral',
+      topic TEXT NOT NULL DEFAULT 'Física geral',
+      edition TEXT NOT NULL DEFAULT '',
+      status TEXT NOT NULL DEFAULT 'draft',
+      owner_user_id TEXT REFERENCES users(id),
+      source_reference TEXT,
+      notes TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_academic_content_status ON academic_content_items(status)',
+    'CREATE INDEX IF NOT EXISTS idx_academic_content_institution ON academic_content_items(institution, edition)',
     `CREATE TABLE IF NOT EXISTS account_status_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       target_user_id TEXT NOT NULL REFERENCES users(id),
@@ -219,6 +265,38 @@ async function initializeSchema() {
          )`,
       )
       .bind(CODEX_ACTOR_ID, CODEX_ACTOR_ID, now),
+    db
+      .prepare(
+        `INSERT INTO users (
+          id, email, full_name, phone, education_level, account_type,
+          role, status, status_reason, professional_type, educator_verification_status,
+          profile_complete, created_by, updated_by, created_at, updated_at
+        ) VALUES (
+          'professor-fabio-honorio', 'fabiohoronorio@msn.com', 'Fábio Honório', '',
+          'professor', 'human', 'professor', 'active',
+          'Cadastro professor solicitado por Welber. Acesso via login seguro do site; senha simples não armazenada.',
+          'teacher', 'approved', 0, ?, ?, ?, ?
+        )
+        ON CONFLICT(email) DO UPDATE SET
+          full_name = excluded.full_name,
+          role = 'professor',
+          status = 'active',
+          professional_type = 'teacher',
+          educator_verification_status = 'approved',
+          updated_by = excluded.updated_by,
+          updated_at = excluded.updated_at
+        `,
+      )
+      .bind(CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
+    db
+      .prepare(
+        `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)
+         SELECT ?, 'professor-fabio-honorio', 'user.professor_reserved', '{"email":"fabiohoronorio@msn.com","passwordStored":false}', ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM audit_logs WHERE action = 'user.professor_reserved'
+         )`,
+      )
+      .bind(CODEX_ACTOR_ID, now),
   ];
 
   const initialAdminEmail = getInitialAdminEmail();

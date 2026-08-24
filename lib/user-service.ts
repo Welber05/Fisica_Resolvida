@@ -8,8 +8,11 @@ import type {
   AccountType,
   AppRole,
   AppUser,
+  AcademicContentItem,
+  BillingPlan,
   BillingProfile,
   EducatorVerificationStatus,
+  PaymentMethod,
   ProfessionalType,
   SafeUser,
   SocialLinks,
@@ -88,6 +91,47 @@ type BillingRow = {
   country: string;
   plan_code: string;
   subscription_status: string;
+  updated_at: number;
+};
+
+type BillingPlanRow = {
+  id: string;
+  code: string;
+  name: string;
+  license_type: string;
+  billing_cycle: string;
+  price_cents: number;
+  currency: string;
+  max_users: number;
+  features_json: string;
+  status: 'active' | 'inactive';
+  created_at: number;
+  updated_at: number;
+};
+
+type PaymentMethodRow = {
+  id: string;
+  name: string;
+  method_type: string;
+  provider: string;
+  instructions_json: string;
+  status: 'active' | 'inactive';
+  created_at: number;
+  updated_at: number;
+};
+
+type AcademicContentRow = {
+  id: string;
+  title: string;
+  kind: string;
+  institution: string;
+  topic: string;
+  edition: string;
+  status: 'draft' | 'review' | 'published' | 'archived';
+  owner_user_id: string | null;
+  source_reference: string | null;
+  notes: string | null;
+  created_at: number;
   updated_at: number;
 };
 
@@ -288,6 +332,42 @@ export async function listTeacherSchools(userId: string): Promise<TeacherSchool[
   return result.results.map(mapTeacherSchool);
 }
 
+export async function listBillingPlans(): Promise<BillingPlan[]> {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare(
+      `SELECT * FROM billing_plans
+       WHERE deleted_at IS NULL
+       ORDER BY status = 'active' DESC, updated_at DESC`,
+    )
+    .all<BillingPlanRow>();
+  return result.results.map(mapBillingPlan);
+}
+
+export async function listPaymentMethods(): Promise<PaymentMethod[]> {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare(
+      `SELECT * FROM payment_methods
+       WHERE deleted_at IS NULL
+       ORDER BY status = 'active' DESC, updated_at DESC`,
+    )
+    .all<PaymentMethodRow>();
+  return result.results.map(mapPaymentMethod);
+}
+
+export async function listAcademicContentItems(): Promise<AcademicContentItem[]> {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare(
+      `SELECT * FROM academic_content_items
+       WHERE deleted_at IS NULL
+       ORDER BY updated_at DESC`,
+    )
+    .all<AcademicContentRow>();
+  return result.results.map(mapAcademicContent);
+}
+
 export async function dashboardMetrics() {
   await ensureSchema();
   const db = getD1();
@@ -452,6 +532,65 @@ function mapTeacherSchool(row: TeacherSchoolRow): TeacherSchool {
     headerSubtitle: row.header_subtitle,
     footerText: row.footer_text,
     isActive: Boolean(row.is_active),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapBillingPlan(row: BillingPlanRow): BillingPlan {
+  let features: string[] = [];
+  try {
+    features = JSON.parse(row.features_json || '[]') as string[];
+  } catch {
+    features = [];
+  }
+  return {
+    id: row.id,
+    code: row.code,
+    name: row.name,
+    licenseType: row.license_type,
+    billingCycle: row.billing_cycle,
+    priceCents: row.price_cents,
+    currency: row.currency,
+    maxUsers: row.max_users,
+    features,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapPaymentMethod(row: PaymentMethodRow): PaymentMethod {
+  let instructions: Record<string, string> = {};
+  try {
+    instructions = JSON.parse(row.instructions_json || '{}') as Record<string, string>;
+  } catch {
+    instructions = {};
+  }
+  return {
+    id: row.id,
+    name: row.name,
+    methodType: row.method_type,
+    provider: row.provider,
+    instructions,
+    status: row.status,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapAcademicContent(row: AcademicContentRow): AcademicContentItem {
+  return {
+    id: row.id,
+    title: row.title,
+    kind: row.kind,
+    institution: row.institution,
+    topic: row.topic,
+    edition: row.edition,
+    status: row.status,
+    ownerUserId: row.owner_user_id,
+    sourceReference: row.source_reference ?? '',
+    notes: row.notes ?? '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
