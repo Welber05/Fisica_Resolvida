@@ -79,7 +79,7 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
         </div>
         <ol>
           <li className={step === 1 ? 'active' : ''}><b>1</b><span>Dados essenciais<small>Identificação e contato</small></span></li>
-          <li className={step === 2 ? 'active' : ''}><b>2</b><span>Endereço<small>Cadastro e cobrança</small></span></li>
+          <li className={step === 2 ? 'active' : ''}><b>2</b><span>Endereço<small>Opcional</small></span></li>
           <li className={step === 3 ? 'active' : ''}><b>3</b><span>Perfil opcional<small>Trajetória e redes</small></span></li>
         </ol>
       </aside>
@@ -101,7 +101,7 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
               <label>E-mail<input name="email" type="email" value={initialUser.email} readOnly /></label>
               <label>Telefone com DDD<input name="phone" required placeholder="(11) 99999-9999" defaultValue={initialUser.phone} /></label>
               <label className="wide">Nível escolar<select name="educationLevel" required defaultValue={initialUser.educationLevel}><option value="">Selecione...</option>{educationLevels.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label>Classificação profissional<select name="professionalType" defaultValue={initialUser.professionalType}>{Object.entries(professionalTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label>Classificação profissional<input type="hidden" name="professionalTypeRequired" value="1" /><select name="professionalType" required defaultValue={initialUser.professionalType}>{Object.entries(professionalTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
               <label>E-mail institucional<input name="institutionalEmail" type="email" defaultValue={initialUser.institutionalEmail ?? ''} /></label>
               <label>Número funcional<input name="functionalId" defaultValue={initialUser.functionalId ?? ''} /></label>
               <label>CPF para validação<input name="cpf" inputMode="numeric" autoComplete="off" defaultValue={initialUser.cpf ?? ''} /></label>
@@ -109,16 +109,17 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
           </div>
 
           <div hidden={step !== 2} className="form-step">
-            <p className="eyebrow">ENDEREÇO OBRIGATÓRIO</p><h2>Onde você está</h2>
+            <p className="eyebrow">ENDEREÇO OPCIONAL</p><h2>Onde você está</h2>
+            <p>Você pode concluir o cadastro sem preencher endereço. Estes dados poderão ser informados depois em Minha conta.</p>
             <div className="account-grid">
-              <label>CEP<input name="addressPostalCode" required defaultValue={initialUser.address.postalCode} /></label>
-              <label>País<input name="addressCountry" required defaultValue={initialUser.address.country || 'Brasil'} /></label>
-              <label className="wide">Logradouro<input name="addressStreet" required defaultValue={initialUser.address.street} /></label>
-              <label>Número<input name="addressNumber" required defaultValue={initialUser.address.number} /></label>
+              <label>CEP<input name="addressPostalCode" defaultValue={initialUser.address.postalCode} /></label>
+              <label>País<input name="addressCountry" defaultValue={initialUser.address.country || 'Brasil'} /></label>
+              <label className="wide">Logradouro<input name="addressStreet" defaultValue={initialUser.address.street} /></label>
+              <label>Número<input name="addressNumber" defaultValue={initialUser.address.number} /></label>
               <label>Complemento<input name="addressComplement" defaultValue={initialUser.address.complement} /></label>
               <label>Bairro<input name="addressNeighborhood" defaultValue={initialUser.address.neighborhood} /></label>
-              <label>Cidade<input name="addressCity" required defaultValue={initialUser.address.city} /></label>
-              <label>Estado<input name="addressState" required defaultValue={initialUser.address.state} /></label>
+              <label>Cidade<input name="addressCity" defaultValue={initialUser.address.city} /></label>
+              <label>Estado<input name="addressState" defaultValue={initialUser.address.state} /></label>
             </div>
           </div>
 
@@ -126,9 +127,9 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
             <p className="eyebrow">INFORMAÇÕES OPCIONAIS</p><h2>Perfil acadêmico e social</h2>
             <div className="account-grid">
               <label className="wide">Imagem de perfil <small>JPEG, PNG ou WebP · máximo 2 MB</small><input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" /></label>
-              <label>Currículo Lattes<input name="lattesUrl" type="url" placeholder="https://lattes.cnpq.br/..." defaultValue={initialUser.lattesUrl ?? ''} /></label>
+              <label>Currículo Lattes<input name="lattesUrl" placeholder="lattes.cnpq.br/..." defaultValue={initialUser.lattesUrl ?? ''} /></label>
               <label>ORCID<input name="orcid" placeholder="0000-0000-0000-0000" defaultValue={initialUser.orcid ?? ''} /></label>
-              {(['instagram', 'youtube', 'linkedin', 'facebook', 'x'] as const).map((network) => <label key={network}>{network === 'x' ? 'X / Twitter' : network[0].toUpperCase() + network.slice(1)}<input name={network} type="url" placeholder="https://" defaultValue={initialUser.socialLinks[network] ?? ''} /></label>)}
+              {(['instagram', 'youtube', 'linkedin', 'facebook', 'x'] as const).map((network) => <label key={network}>{network === 'x' ? 'X / Twitter' : network[0].toUpperCase() + network.slice(1)}<input name={network} placeholder="https://" defaultValue={initialUser.socialLinks[network] ?? ''} /></label>)}
               <label className="consent wide"><input name="privacyAccepted" type="checkbox" required /><span>Declaro que as informações são verdadeiras, li e aceito os <a href="/termos" target="_blank">Termos de Uso</a> e o <a href="/privacidade" target="_blank">Aviso de Privacidade</a> (versão {LEGAL_DOCUMENT_VERSION}).</span></label>
             </div>
           </div>

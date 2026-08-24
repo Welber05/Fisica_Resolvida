@@ -336,6 +336,45 @@ async function initializeSchema() {
       .prepare(
         `INSERT INTO users (
           id, email, full_name, phone, education_level, account_type,
+          role, status, professional_type, educator_verification_status,
+          profile_complete, privacy_accepted_at,
+          created_by, updated_by, created_at, updated_at
+        ) VALUES (
+          'owner-welber-admin', 'welber05@gmail.com', 'Welber', '+5527997886378',
+          'professor', 'human', 'admin', 'active', 'education_professional',
+          'approved', 1, ?, ?, ?, ?, ?
+        )
+        ON CONFLICT(email) DO UPDATE SET
+          full_name = CASE WHEN users.full_name = '' THEN excluded.full_name ELSE users.full_name END,
+          phone = CASE WHEN users.phone = '' THEN excluded.phone ELSE users.phone END,
+          education_level = CASE WHEN users.education_level = '' THEN excluded.education_level ELSE users.education_level END,
+          role = 'admin',
+          status = 'active',
+          status_reason = NULL,
+          suspended_until = NULL,
+          professional_type = CASE WHEN users.professional_type = 'student' THEN excluded.professional_type ELSE users.professional_type END,
+          educator_verification_status = 'approved',
+          profile_complete = 1,
+          privacy_accepted_at = COALESCE(users.privacy_accepted_at, excluded.privacy_accepted_at),
+          updated_by = excluded.updated_by,
+          updated_at = excluded.updated_at
+        `,
+      )
+      .bind(now, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
+    db
+      .prepare(
+        `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)
+         SELECT ?, COALESCE((SELECT id FROM users WHERE email = 'welber05@gmail.com'), 'owner-welber-admin'),
+           'user.owner_welber_reserved', '{"email":"welber05@gmail.com","role":"admin","status":"active"}', ?
+         WHERE NOT EXISTS (
+           SELECT 1 FROM audit_logs WHERE action = 'user.owner_welber_reserved'
+         )`,
+      )
+      .bind(CODEX_ACTOR_ID, now),
+    db
+      .prepare(
+        `INSERT INTO users (
+          id, email, full_name, phone, education_level, account_type,
           role, status, status_reason, professional_type, educator_verification_status,
           profile_complete, password_hash, created_by, updated_by, created_at, updated_at
         ) VALUES (

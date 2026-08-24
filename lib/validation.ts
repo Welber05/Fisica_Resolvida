@@ -39,30 +39,26 @@ export function validateProfilePayload(value: unknown, expectedEmail: string) {
   if (!educationLevels.some(([code]) => code === educationLevel)) {
     throw new ValidationError('Selecione um nível escolar válido.');
   }
-  const professionalType = String(input.professionalType || 'student') as ProfessionalType;
+  const professionalType = requiredProfessionalType(input.professionalType);
   if (!['student', 'teacher', 'education_professional'].includes(professionalType)) {
     throw new ValidationError('Selecione uma classificação profissional válida.');
   }
-  const institutionalEmail = optionalEmail(input.institutionalEmail, 'e-mail institucional');
+  const institutionalEmail = optionalLooseEmail(input.institutionalEmail);
   const functionalId = optionalText(input.functionalId, 60);
-  const cpf = optionalCpf(input.cpf);
+  const cpf = optionalCpf(input.cpf, true);
 
   const socialInput = objectValue(input.socialLinks ?? {});
   const socialLinks: SocialLinks = {};
   for (const network of ['instagram', 'youtube', 'linkedin', 'facebook', 'x'] as const) {
-    const url = optionalUrl(socialInput[network], `URL de ${network}`);
+    const url = optionalAdminUrl(socialInput[network]);
     if (url) socialLinks[network] = url;
   }
 
-  const lattesUrl = optionalUrl(input.lattesUrl, 'Currículo Lattes');
-  if (lattesUrl && new URL(lattesUrl).hostname !== 'lattes.cnpq.br') {
-    throw new ValidationError('Informe um endereço válido do domínio lattes.cnpq.br.');
-  }
+  const lattesUrl = optionalAdminUrl(input.lattesUrl);
+  const validLattesUrl = lattesUrl && new URL(lattesUrl).hostname === 'lattes.cnpq.br' ? lattesUrl : '';
 
   const orcid = optionalText(input.orcid, 30).toUpperCase();
-  if (orcid && !isValidOrcid(orcid)) {
-    throw new ValidationError('Informe um ORCID válido no formato 0000-0000-0000-0000.');
-  }
+  const validOrcid = orcid && isValidOrcid(orcid) ? orcid : '';
 
   return {
     fullName: requiredText(input.fullName, 'nome', 3, 120),
@@ -73,18 +69,18 @@ export function validateProfilePayload(value: unknown, expectedEmail: string) {
     institutionalEmail: professionalType === 'student' ? null : institutionalEmail || null,
     functionalId: professionalType === 'student' ? null : functionalId || null,
     cpf: professionalType === 'student' ? null : cpf || null,
-    lattesUrl: lattesUrl || null,
-    orcid: orcid || null,
+    lattesUrl: validLattesUrl || null,
+    orcid: validOrcid || null,
     socialLinks,
     address: {
-      postalCode: requiredText(input.addressPostalCode, 'CEP', 5, 12),
-      street: requiredText(input.addressStreet, 'logradouro', 3, 160),
-      number: requiredText(input.addressNumber, 'número', 1, 30),
+      postalCode: optionalText(input.addressPostalCode, 12),
+      street: optionalText(input.addressStreet, 160),
+      number: optionalText(input.addressNumber, 30),
       complement: optionalText(input.addressComplement, 100),
       neighborhood: optionalText(input.addressNeighborhood, 100),
-      city: requiredText(input.addressCity, 'cidade', 2, 100),
-      state: requiredText(input.addressState, 'estado', 2, 60),
-      country: requiredText(input.addressCountry || 'Brasil', 'país', 2, 60),
+      city: optionalText(input.addressCity, 100),
+      state: optionalText(input.addressState, 60),
+      country: optionalText(input.addressCountry, 60) || 'Brasil',
     },
   };
 }
@@ -229,6 +225,14 @@ function requiredEmail(value: unknown) {
   return email;
 }
 
+function requiredProfessionalType(value: unknown) {
+  const professionalType = String(value ?? '').trim() as ProfessionalType;
+  if (!professionalType) {
+    throw new ValidationError('Selecione uma classificação profissional.');
+  }
+  return professionalType;
+}
+
 function optionalEmail(value: unknown, label: string) {
   const email = String(value ?? '').trim().toLowerCase();
   if (!email) return '';
@@ -236,6 +240,12 @@ function optionalEmail(value: unknown, label: string) {
     throw new ValidationError(`Informe um ${label} válido.`);
   }
   return email;
+}
+
+function optionalLooseEmail(value: unknown) {
+  const email = String(value ?? '').trim().toLowerCase();
+  if (!email) return '';
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : '';
 }
 
 function optionalCpf(value: unknown, ignoreInvalid = false) {
@@ -246,18 +256,6 @@ function optionalCpf(value: unknown, ignoreInvalid = false) {
     throw new ValidationError('Informe um CPF válido com 11 dígitos ou deixe em branco.');
   }
   return cpf;
-}
-
-function optionalUrl(value: unknown, label: string) {
-  const text = String(value ?? '').trim();
-  if (!text) return '';
-  try {
-    const url = new URL(text);
-    if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
-    return url.toString();
-  } catch {
-    throw new ValidationError(`${label}: informe uma URL válida.`);
-  }
 }
 
 function optionalAdminUrl(value: unknown) {

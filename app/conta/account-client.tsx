@@ -148,7 +148,7 @@ export default function AccountClient({
       </aside>
       <section className="account-content">
         {tab === 'perfil' ? (
-          <form className="settings-card" onSubmit={saveProfile}>
+          <form className="settings-card" onSubmit={saveProfile} noValidate>
             <header><div><p className="eyebrow">MINHA CONTA</p><h1>Perfil e endereço</h1><p>Atualize seus dados pessoais e acadêmicos.</p></div><button className="primary" disabled={busy}>{busy ? 'Salvando...' : 'Salvar alterações'}</button></header>
             <div className="avatar-upload"><div className="avatar">{user.avatarUrl ? <img src={user.avatarUrl} alt="" /> : initials}</div><label>Nova imagem<input name="avatar" type="file" accept="image/jpeg,image/png,image/webp" /><small>JPEG, PNG ou WebP · máximo 2 MB</small></label></div>
             <div className="section-title"><b>Dados essenciais</b><span>Obrigatórios</span></div>
@@ -161,23 +161,23 @@ export default function AccountClient({
             <div className="section-title"><b>Classificação profissional</b><span>{educatorVerificationLabels[user.educatorVerificationStatus]}</span></div>
             <div className="professional-note"><span>✓</span><p>Professores e profissionais da educação podem solicitar validação. E-mail institucional, número funcional e CPF ajudam a comprovar o vínculo, mas a liberação da personalização continua passando por aprovação/gestão.</p></div>
             <div className="account-grid">
-              <label>Tipo de perfil<select name="professionalType" defaultValue={user.professionalType}>
+              <label>Tipo de perfil<select name="professionalType" required defaultValue={user.professionalType}>
                 {Object.entries(professionalTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
               </select></label>
               <label>E-mail institucional<input name="institutionalEmail" type="email" defaultValue={user.institutionalEmail ?? ''} /></label>
               <label>Número funcional<input name="functionalId" defaultValue={user.functionalId ?? ''} /></label>
               <label>CPF para validação<input name="cpf" inputMode="numeric" autoComplete="off" defaultValue={user.cpf ?? ''} /></label>
             </div>
-            <div className="section-title"><b>Endereço</b><span>Obrigatório</span></div>
+            <div className="section-title"><b>Endereço</b><span>Opcional</span></div>
             <div className="account-grid">
-              <label>CEP<input name="addressPostalCode" required defaultValue={user.address.postalCode} /></label><label>País<input name="addressCountry" required defaultValue={user.address.country} /></label>
-              <label className="wide">Logradouro<input name="addressStreet" required defaultValue={user.address.street} /></label><label>Número<input name="addressNumber" required defaultValue={user.address.number} /></label><label>Complemento<input name="addressComplement" defaultValue={user.address.complement} /></label>
-              <label>Bairro<input name="addressNeighborhood" defaultValue={user.address.neighborhood} /></label><label>Cidade<input name="addressCity" required defaultValue={user.address.city} /></label><label>Estado<input name="addressState" required defaultValue={user.address.state} /></label>
+              <label>CEP<input name="addressPostalCode" defaultValue={user.address.postalCode} /></label><label>País<input name="addressCountry" defaultValue={user.address.country} /></label>
+              <label className="wide">Logradouro<input name="addressStreet" defaultValue={user.address.street} /></label><label>Número<input name="addressNumber" defaultValue={user.address.number} /></label><label>Complemento<input name="addressComplement" defaultValue={user.address.complement} /></label>
+              <label>Bairro<input name="addressNeighborhood" defaultValue={user.address.neighborhood} /></label><label>Cidade<input name="addressCity" defaultValue={user.address.city} /></label><label>Estado<input name="addressState" defaultValue={user.address.state} /></label>
             </div>
             <div className="section-title"><b>Perfil acadêmico e redes</b><span>Opcional</span></div>
             <div className="account-grid">
-              <label>Currículo Lattes<input name="lattesUrl" type="url" defaultValue={user.lattesUrl ?? ''} /></label><label>ORCID<input name="orcid" defaultValue={user.orcid ?? ''} /></label>
-              {(['instagram', 'youtube', 'linkedin', 'facebook', 'x'] as const).map((network) => <label key={network}>{network === 'x' ? 'X / Twitter' : network[0].toUpperCase() + network.slice(1)}<input name={network} type="url" defaultValue={user.socialLinks[network] ?? ''} /></label>)}
+              <label>Currículo Lattes<input name="lattesUrl" defaultValue={user.lattesUrl ?? ''} /></label><label>ORCID<input name="orcid" defaultValue={user.orcid ?? ''} /></label>
+              {(['instagram', 'youtube', 'linkedin', 'facebook', 'x'] as const).map((network) => <label key={network}>{network === 'x' ? 'X / Twitter' : network[0].toUpperCase() + network.slice(1)}<input name={network} defaultValue={user.socialLinks[network] ?? ''} /></label>)}
             </div>
           </form>
         ) : tab === 'faturamento' ? (
