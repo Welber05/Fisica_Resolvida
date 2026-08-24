@@ -1,18 +1,8 @@
-import { redirect } from 'next/navigation';
-import { chatGPTSignInPath, getChatGPTUser } from '@/app/chatgpt-auth';
+import { chatGPTSignInPath } from '@/app/chatgpt-auth';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LoginPage() {
-  const identity = await getChatGPTUser();
-  if (identity) {
-    const { getOrCreateUser } = await import('@/lib/user-service');
-    const user = await getOrCreateUser(identity);
-    if (user.status !== 'active') redirect(`/acesso?status=${user.status}`);
-    if (!user.profileComplete) redirect('/cadastro');
-    redirect(['manager', 'admin'].includes(user.role) ? '/painel' : '/acervo');
-  }
-
   return (
     <main className="auth-page">
       <section className="auth-hero">
