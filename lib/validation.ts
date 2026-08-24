@@ -126,8 +126,53 @@ export function validateAdminUserPayload(value: unknown, allowedRoles: AppRole[]
   const input = objectValue(value);
   const role = String(input.role || 'user') as AppRole;
   if (!allowedRoles.includes(role)) throw new ValidationError('Papel não autorizado.');
-  const profile = validateProfilePayload(input, requiredEmail(input.email));
-  return { ...profile, role };
+  const email = requiredEmail(input.email);
+  const educationLevel = requiredText(input.educationLevel, 'nível escolar', 2, 40);
+  if (!educationLevels.some(([code]) => code === educationLevel)) {
+    throw new ValidationError('Selecione um nível escolar válido.');
+  }
+  const professionalType = String(input.professionalType || (role === 'user' ? 'student' : 'teacher')) as ProfessionalType;
+  if (!['student', 'teacher', 'education_professional'].includes(professionalType)) {
+    throw new ValidationError('Selecione uma classificação profissional válida.');
+  }
+  const socialInput = objectValue(input.socialLinks ?? {});
+  const socialLinks: SocialLinks = {};
+  for (const network of ['instagram', 'youtube', 'linkedin', 'facebook', 'x'] as const) {
+    const url = optionalUrl(socialInput[network], `URL de ${network}`);
+    if (url) socialLinks[network] = url;
+  }
+  const lattesUrl = optionalUrl(input.lattesUrl, 'Currículo Lattes');
+  if (lattesUrl && new URL(lattesUrl).hostname !== 'lattes.cnpq.br') {
+    throw new ValidationError('Informe um endereço válido do domínio lattes.cnpq.br.');
+  }
+  const orcid = optionalText(input.orcid, 30).toUpperCase();
+  if (orcid && !isValidOrcid(orcid)) {
+    throw new ValidationError('Informe um ORCID válido no formato 0000-0000-0000-0000.');
+  }
+  return {
+    role,
+    fullName: requiredText(input.fullName, 'nome', 3, 120),
+    email,
+    phone: normalizePhone(input.phone),
+    educationLevel,
+    professionalType: role === 'user' ? 'student' : professionalType,
+    institutionalEmail: optionalEmail(input.institutionalEmail, 'e-mail institucional') || null,
+    functionalId: optionalText(input.functionalId, 60) || null,
+    cpf: optionalCpf(input.cpf) || null,
+    lattesUrl: lattesUrl || null,
+    orcid: orcid || null,
+    socialLinks,
+    address: {
+      postalCode: optionalText(input.addressPostalCode, 12),
+      street: optionalText(input.addressStreet, 160),
+      number: optionalText(input.addressNumber, 30),
+      complement: optionalText(input.addressComplement, 100),
+      neighborhood: optionalText(input.addressNeighborhood, 100),
+      city: optionalText(input.addressCity, 100),
+      state: optionalText(input.addressState, 60),
+      country: optionalText(input.addressCountry, 60) || 'Brasil',
+    },
+  };
 }
 
 export function validateStatusPayload(value: unknown) {
