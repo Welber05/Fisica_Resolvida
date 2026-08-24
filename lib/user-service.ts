@@ -214,6 +214,10 @@ export async function getOrCreateUser(identity: ChatGPTUser): Promise<AppUser> {
       .bind(localUserId, normalizedEmail)
       .first<UserRow>();
     if (!localRow) throw new ApiAccessError(401, 'Sessão local inválida. Entre novamente.');
+    if (isOwnerEmail(localRow.email)) {
+      const owner = await repairOwnerUserRow(db, localRow, null);
+      return mapUser(owner);
+    }
     return mapUser(localRow);
   }
 
@@ -314,26 +318,7 @@ async function getOrCreateOwnerUser(db: D1Database, identity: ChatGPTUser): Prom
       .prepare("UPDATE users SET auth_user_id = NULL, updated_by = ?, updated_at = ? WHERE auth_user_id = ? AND id <> ?")
       .bind(CODEX_ACTOR_ID, now, identity.userId, row.id)
       .run();
-    await db
-      .prepare(
-        `UPDATE users SET
-          auth_user_id = ?, email = ?, full_name = CASE WHEN full_name = '' THEN ? ELSE full_name END,
-          phone = CASE WHEN phone = '' THEN '+5527997886378' ELSE phone END,
-          education_level = CASE WHEN education_level = '' THEN 'professor' ELSE education_level END,
-          role = 'admin', status = 'active', status_reason = NULL, suspended_until = NULL,
-          professional_type = CASE WHEN professional_type = 'student' THEN 'education_professional' ELSE professional_type END,
-          educator_verification_status = 'approved',
-          profile_complete = 1,
-          privacy_accepted_at = COALESCE(privacy_accepted_at, ?),
-          deleted_at = NULL,
-          updated_by = ?, updated_at = ?
-         WHERE id = ?`,
-      )
-      .bind(identity.userId, normalizedEmail, identity.fullName ?? 'Welber', now, CODEX_ACTOR_ID, now, row.id)
-      .run();
-    const refreshed = await db.prepare('SELECT * FROM users WHERE id = ?').bind(row.id).first<UserRow>();
-    if (!refreshed) throw new Error('Não foi possível recarregar o administrador proprietário.');
-    return refreshed;
+    return repairOwnerUserRow(db, row, identity);
   }
 
   const id = 'owner-welber-admin';
@@ -361,6 +346,36 @@ async function getOrCreateOwnerUser(db: D1Database, identity: ChatGPTUser): Prom
     status: 'active',
   });
   return created;
+}
+
+async function repairOwnerUserRow(db: D1Database, row: UserRow, identity: ChatGPTUser | null): Promise<UserRow> {
+  const now = Date.now();
+  await db
+    .prepare(
+      `UPDATE users SET
+        auth_user_id = COALESCE(?, auth_user_id),
+        email = ?,
+        full_name = CASE WHEN full_name = '' THEN ? ELSE full_name END,
+        phone = CASE WHEN phone = '' THEN '+5527997886378' ELSE phone END,
+        education_level = CASE WHEN education_level = '' THEN 'professor' ELSE education_level END,
+        role = 'admin',
+        status = 'active',
+        status_reason = NULL,
+        suspended_until = NULL,
+        professional_type = CASE WHEN professional_type = 'student' THEN 'education_professional' ELSE professional_type END,
+        educator_verification_status = 'approved',
+        profile_complete = 1,
+        privacy_accepted_at = COALESCE(privacy_accepted_at, ?),
+        deleted_at = NULL,
+        updated_by = ?,
+        updated_at = ?
+       WHERE id = ?`,
+    )
+    .bind(identity?.userId ?? null, OWNER_EMAIL, identity?.fullName ?? 'Welber', now, CODEX_ACTOR_ID, now, row.id)
+    .run();
+  const refreshed = await db.prepare('SELECT * FROM users WHERE id = ?').bind(row.id).first<UserRow>();
+  if (!refreshed) throw new Error('Não foi possível recarregar o administrador proprietário.');
+  return refreshed;
 }
 
 export async function requirePageUser(
