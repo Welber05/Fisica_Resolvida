@@ -1,12 +1,10 @@
 import { redirect } from 'next/navigation';
 import { chatGPTSignInPath, getChatGPTUser } from '@/app/chatgpt-auth';
-import { ensureSchema } from '@/db';
 import { getOrCreateUser } from '@/lib/user-service';
 
 export const dynamic = 'force-dynamic';
 
 export default async function LoginPage() {
-  await ensureSchema();
   const identity = await getChatGPTUser();
   if (identity) {
     const user = await getOrCreateUser(identity);
