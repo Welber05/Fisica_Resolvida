@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { importedQuestions, Question } from './questions';
 import { bnccForQuestion, bnccLabel, bnccSkills } from '@/lib/bncc';
-import { applyQuestionCurations } from '@/lib/question-overrides';
+import { applyQuestionCurations, normalizeQuestionText } from '@/lib/question-overrides';
 import type { QuestionCuration, SafeUser, TeacherSchool } from '@/lib/user-types';
 
 type View = 'questoes' | 'prova' | 'cadastro' | 'roteiros';
@@ -421,8 +421,9 @@ export default function QuestionsClient({
       sourceImage: '',
       essentialFigure: false,
     };
-    setQuestions((current) => [question, ...current]);
-    openQuestion(question);
+    const normalizedQuestion = normalizeQuestionText(question);
+    setQuestions((current) => [normalizedQuestion, ...current]);
+    openQuestion(normalizedQuestion);
   }
 
   return (
