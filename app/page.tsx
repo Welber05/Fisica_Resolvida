@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import LandingAccessLink from './landing-access-link';
 
 const formulas = [
   'F = ma',
@@ -46,7 +47,7 @@ export default function Home() {
           <a href="mailto:welber05@gmail.com?subject=Contato%20-%20F%C3%ADsica%20Resolvida">Contato por e-mail</a>
           <a href="https://wa.me/5527997886378" target="_blank" rel="noreferrer">WhatsApp</a>
           <a href="/sobre">Sobre</a>
-          <a className="landing-login" href="/login">Cadastrar / Login</a>
+          <LandingAccessLink className="landing-login">Cadastrar / Login</LandingAccessLink>
         </nav>
       </header>
 
@@ -67,9 +68,7 @@ export default function Home() {
           <p className="eyebrow">ACERVO · PROVAS · ROTEIROS</p>
           <h1>Física Resolvida</h1>
           <p>Uma plataforma para praticar questões, montar provas, organizar classificações e transformar resolução em aprendizagem.</p>
-          <form action="/login" method="get">
-            <button className="landing-cta" type="submit">Entrar no sistema <span>→</span></button>
-          </form>
+          <LandingAccessLink className="landing-cta">Entrar no sistema <span>→</span></LandingAccessLink>
         </div>
       </section>
     </main>
