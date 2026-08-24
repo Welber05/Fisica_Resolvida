@@ -8,6 +8,7 @@ import {
   safeUser,
   writeAudit,
 } from '@/lib/user-service';
+import { createPasswordHash } from '@/lib/local-auth';
 import {
   assertSameOrigin,
   jsonError,
@@ -116,6 +117,19 @@ export async function PATCH(
         .run();
       await assertLastAdminStillExists(result);
       await writeAudit(actor.id, target.id, 'user.role_changed', { from: target.role, to: role });
+    } else if (operation === 'password') {
+      if (!canManageTarget(actor, target)) throw new ApiAccessError(403, 'Alteração não autorizada.');
+      const password = String(body.password || '');
+      const passwordHash = await createPasswordHash(password);
+      await db
+        .prepare('UPDATE users SET password_hash = ?, updated_by = ?, updated_at = ? WHERE id = ?')
+        .bind(passwordHash, actor.id, now, target.id)
+        .run();
+      await db
+        .prepare('UPDATE local_auth_sessions SET revoked_at = ? WHERE user_id = ? AND revoked_at IS NULL')
+        .bind(now, target.id)
+        .run();
+      await writeAudit(actor.id, target.id, 'user.password_changed');
     } else if (operation === 'status') {
       if (!canManageTarget(actor, target)) throw new ApiAccessError(403, 'Alteração de estado não autorizada.');
       const status = validateStatusPayload(body);

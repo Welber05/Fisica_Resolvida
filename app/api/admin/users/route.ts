@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getD1 } from '@/db';
 import { ApiAccessError, listUsers, requireApiUser, safeUser, writeAudit } from '@/lib/user-service';
+import { createPasswordHash } from '@/lib/local-auth';
 import { assertSameOrigin, jsonError, validateAdminUserPayload } from '@/lib/validation';
 import type { AppRole } from '@/lib/user-types';
 
@@ -22,7 +23,10 @@ export async function POST(request: Request) {
     const allowedRoles: AppRole[] = actor.role === 'admin'
       ? ['user', 'professor', 'manager', 'admin']
       : ['user', 'professor'];
-    const profile = validateAdminUserPayload(await request.json(), allowedRoles);
+    const body = (await request.json()) as Record<string, unknown>;
+    const profile = validateAdminUserPayload(body, allowedRoles);
+    const rawPassword = String(body.password || '').trim();
+    const passwordHash = rawPassword ? await createPasswordHash(rawPassword) : null;
     const db = getD1();
     const existing = await db
       .prepare('SELECT id FROM users WHERE email = ? AND deleted_at IS NULL')
@@ -38,11 +42,11 @@ export async function POST(request: Request) {
         `INSERT INTO users (
           id, email, full_name, phone, education_level, role, status,
           professional_type, educator_verification_status, institutional_email, functional_id, cpf,
-          lattes_url, orcid, social_links_json, address_postal_code,
+          lattes_url, orcid, password_hash, social_links_json, address_postal_code,
           address_street, address_number, address_complement, address_neighborhood,
           address_city, address_state, address_country, profile_complete,
           created_by, updated_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -58,6 +62,7 @@ export async function POST(request: Request) {
         profile.cpf,
         profile.lattesUrl,
         profile.orcid,
+        passwordHash,
         JSON.stringify(profile.socialLinks),
         profile.address.postalCode,
         profile.address.street,

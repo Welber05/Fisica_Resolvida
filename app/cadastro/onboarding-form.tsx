@@ -85,7 +85,7 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
       </aside>
       <section className="onboarding-form-wrap">
         <form className="account-form" onSubmit={submit} noValidate>
-          <header><span>Etapa {step} de 3</span><a href="/signout-with-chatgpt?return_to=%2Flogin">Sair</a></header>
+          <header><span>Etapa {step} de 3</span><a href="/api/auth/logout">Sair</a></header>
 
           <div hidden={step !== 1} className="form-step">
             <p className="eyebrow">DADOS OBRIGATÓRIOS</p><h2>Informações pessoais</h2>

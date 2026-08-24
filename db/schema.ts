@@ -22,6 +22,7 @@ export const users = sqliteTable(
     institutionalEmail: text('institutional_email'),
     functionalId: text('functional_id'),
     cpf: text('cpf'),
+    passwordHash: text('password_hash'),
     profileComplete: integer('profile_complete', { mode: 'boolean' })
       .notNull()
       .default(false),
@@ -53,6 +54,23 @@ export const users = sqliteTable(
     check('users_status_check', sql`${table.status} IN ('active','inactive','blocked','suspended')`),
     check('users_professional_type_check', sql`${table.professionalType} IN ('student','teacher','education_professional')`),
     check('users_educator_verification_status_check', sql`${table.educatorVerificationStatus} IN ('not_requested','pending','approved','rejected')`),
+  ],
+);
+
+export const localAuthSessions = sqliteTable(
+  'local_auth_sessions',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull().references(() => users.id),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: integer('expires_at').notNull(),
+    createdAt: integer('created_at').notNull(),
+    lastSeenAt: integer('last_seen_at').notNull(),
+    revokedAt: integer('revoked_at'),
+  },
+  (table) => [
+    index('idx_local_sessions_user').on(table.userId, table.revokedAt),
+    index('idx_local_sessions_expiry').on(table.expiresAt),
   ],
 );
 

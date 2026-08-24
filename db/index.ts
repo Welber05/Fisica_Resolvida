@@ -36,6 +36,8 @@ export async function ensureSchema() {
 
 async function initializeSchema() {
   const db = getD1();
+  const fabioInitialPasswordHash =
+    'pbkdf2:SHA-256:120000:4b230985d6563be50a71e1029cc81118:eb33b587435e1cabcc80dc12ab5f82ff14645115eb9ff3dceebd7b1a93dd74c5';
   const statements = [
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -54,6 +56,7 @@ async function initializeSchema() {
       institutional_email TEXT,
       functional_id TEXT,
       cpf TEXT,
+      password_hash TEXT,
       profile_complete INTEGER NOT NULL DEFAULT 0,
       avatar_key TEXT,
       lattes_url TEXT,
@@ -266,6 +269,17 @@ async function initializeSchema() {
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_access_invites_code ON access_invites(code)',
     'CREATE INDEX IF NOT EXISTS idx_access_invites_email ON access_invites(email)',
     'CREATE INDEX IF NOT EXISTS idx_access_invites_status ON access_invites(status)',
+    `CREATE TABLE IF NOT EXISTS local_auth_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      token_hash TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      created_at INTEGER NOT NULL,
+      last_seen_at INTEGER NOT NULL,
+      revoked_at INTEGER
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_local_sessions_user ON local_auth_sessions(user_id, revoked_at)',
+    'CREATE INDEX IF NOT EXISTS idx_local_sessions_expiry ON local_auth_sessions(expires_at)',
   ];
 
   await db.batch(statements.map((statement) => db.prepare(statement)));
@@ -282,6 +296,7 @@ async function initializeSchema() {
     ['institutional_email', 'ALTER TABLE users ADD COLUMN institutional_email TEXT'],
     ['functional_id', 'ALTER TABLE users ADD COLUMN functional_id TEXT'],
     ['cpf', 'ALTER TABLE users ADD COLUMN cpf TEXT'],
+    ['password_hash', 'ALTER TABLE users ADD COLUMN password_hash TEXT'],
   ] as const;
   for (const [column, statement] of userColumnBackfills) {
     if (!userColumnNames.has(column)) await db.prepare(statement).run();
@@ -322,12 +337,12 @@ async function initializeSchema() {
         `INSERT INTO users (
           id, email, full_name, phone, education_level, account_type,
           role, status, status_reason, professional_type, educator_verification_status,
-          profile_complete, created_by, updated_by, created_at, updated_at
+          profile_complete, password_hash, created_by, updated_by, created_at, updated_at
         ) VALUES (
           'professor-fabio-honorio', 'fabiohoronorio@msn.com', 'Fábio Honório', '',
           'professor', 'human', 'professor', 'active',
           'Cadastro professor solicitado por Welber. Acesso via login seguro do site; senha simples não armazenada.',
-          'teacher', 'approved', 0, ?, ?, ?, ?
+          'teacher', 'approved', 0, ?, ?, ?, ?, ?
         )
         ON CONFLICT(email) DO UPDATE SET
           full_name = excluded.full_name,
@@ -335,15 +350,16 @@ async function initializeSchema() {
           status = 'active',
           professional_type = 'teacher',
           educator_verification_status = 'approved',
+          password_hash = COALESCE(users.password_hash, excluded.password_hash),
           updated_by = excluded.updated_by,
           updated_at = excluded.updated_at
         `,
       )
-      .bind(CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
+      .bind(fabioInitialPasswordHash, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
     db
       .prepare(
         `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)
-         SELECT ?, 'professor-fabio-honorio', 'user.professor_reserved', '{"email":"fabiohoronorio@msn.com","passwordStored":false}', ?
+         SELECT ?, 'professor-fabio-honorio', 'user.professor_reserved', '{"email":"fabiohoronorio@msn.com","passwordStored":true}', ?
          WHERE NOT EXISTS (
            SELECT 1 FROM audit_logs WHERE action = 'user.professor_reserved'
          )`,
