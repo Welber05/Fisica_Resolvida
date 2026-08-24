@@ -81,13 +81,16 @@ export default function AccountClient({
   async function saveSchool(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true); setMessage('');
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const wasEditing = Boolean(editingSchool);
     if (editingSchool) form.set('id', editingSchool.id);
     try {
       const response = await fetch('/api/schools', { method: 'POST', body: form });
       const data = (await response.json()) as { schools?: TeacherSchool[]; error?: string };
       if (!response.ok || !data.schools) throw new Error(data.error || 'Não foi possível salvar a escola.');
-      setSchools(data.schools); setEditingSchool(null); event.currentTarget.reset();
+      if (!wasEditing) formElement.reset();
+      setSchools(data.schools); setEditingSchool(null);
       setMessage('Escola e modelo de documento atualizados com sucesso.');
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Erro inesperado.');
