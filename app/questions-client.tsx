@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { importedQuestions, Question } from './questions';
 import type { SafeUser } from '@/lib/user-types';
 
@@ -20,7 +20,16 @@ const topicIcons: Record<string, string> = {
   'Fluidos': '≋',
   'Física moderna': 'ℏ',
   'Física geral': 'Σ',
+  'Cinemática': '↗',
+  'Dinâmica': '↘',
+  'Estática': '□',
+  'Hidrostática': '≋',
+  'Hidrodinâmica': '≋',
+  'Óptica Geométrica': '◈',
+  'Eletrodinâmica': 'ϟ',
 };
+
+const institutions: InstitutionFilter[] = ['Todas', 'ITA', 'IME', 'ENEM', 'FTD'];
 
 function examKey(question: Question) {
   return question.institution + '|' + question.edition;
@@ -62,6 +71,7 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
       ITA: questions.filter((question) => question.institution === 'ITA').length,
       IME: questions.filter((question) => question.institution === 'IME').length,
       ENEM: questions.filter((question) => question.institution === 'ENEM').length,
+      FTD: questions.filter((question) => question.institution === 'FTD').length,
     }),
     [questions],
   );
@@ -118,6 +128,50 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
 
   const roteiro =
     questions.find((question) => question.id === scriptQuestion) ?? questions[0];
+
+  const activeIndex = filtered.findIndex((question) => question.id === active.id);
+  const previousQuestion = activeIndex > 0 ? filtered[activeIndex - 1] : null;
+  const nextQuestion =
+    activeIndex >= 0 && activeIndex < filtered.length - 1
+      ? filtered[activeIndex + 1]
+      : null;
+
+  useEffect(() => {
+    const payload = {
+      questionId: active.id,
+      questionCode: active.code,
+      institution: active.institution,
+      topic: active.topic,
+      edition: active.edition,
+      status: 'viewed',
+    };
+    const sent = navigator.sendBeacon?.('/api/progress', JSON.stringify(payload));
+    if (sent) return;
+    void
+      fetch('/api/progress', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {});
+  }, [active]);
+
+  function saveProgress(status: 'viewed' | 'answered' | 'correct' | 'wrong') {
+    fetch('/api/progress', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        questionId: active.id,
+        questionCode: active.code,
+        institution: active.institution,
+        topic: active.topic,
+        edition: active.edition,
+        selectedAnswer: choice,
+        correctAnswer: active.answer,
+        status,
+      }),
+    }).catch(() => {});
+  }
 
   function navigate(next: View) {
     if (next === 'cadastro' && !canManageContent) return;
@@ -280,7 +334,9 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
           ? 'Instituto Militar de Engenharia'
           : newInstitution === 'ENEM'
             ? 'Exame Nacional do Ensino Médio'
-            : 'Instituto Tecnológico de Aeronáutica',
+            : newInstitution === 'FTD'
+              ? 'Editora FTD'
+              : 'Instituto Tecnológico de Aeronáutica',
       edition: newEdition,
       phase: String(form.get('phase')),
       year: Number(form.get('year')),
@@ -371,7 +427,7 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
 
             <p className="label">INSTITUIÇÃO</p>
             <div className="institution-row">
-              {(['Todas', 'ITA', 'IME', 'ENEM'] as InstitutionFilter[]).map((item) => (
+              {institutions.map((item) => (
                 <button
                   key={item}
                   className={
@@ -435,8 +491,8 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
               <span>✦</span>
               <h3>{questions.length} questões importadas</h3>
               <p>
-                ITA e IME com gabaritos oficiais, marcação de fase e páginas de
-                origem.
+                ITA, IME, ENEM e Simuladão com gabaritos, marcação de origem e
+                páginas para conferência.
               </p>
               <button onClick={() => navigate('prova')}>
                 Criar atividade →
@@ -532,7 +588,16 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
               <button
                 className="primary"
                 disabled={choice === null && active.answer !== null}
-                onClick={() => setChecked(true)}
+                onClick={() => {
+                  setChecked(true);
+                  saveProgress(
+                    active.answer === null
+                      ? 'answered'
+                      : choice === active.answer
+                        ? 'correct'
+                        : 'wrong',
+                  );
+                }}
               >
                 {active.answer === null
                   ? 'Ver situação oficial'
@@ -568,54 +633,36 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
               >
                 <strong>
                   {active.answer === null
-                    ? 'Questão anulada pelo gabarito oficial.'
+                    ? active.status === 'Anulada'
+                      ? 'Questão anulada pelo gabarito oficial.'
+                      : 'Questão sem alternativa objetiva extraída.'
                     : choice === active.answer
                       ? 'Muito bem! Resposta correta.'
                       : 'Ainda não. Revise a estratégia.'}
                 </strong>
                 <span>
                   {active.answer === null
-                    ? 'A banca considerou a questão correta para todos os candidatos.'
+                    ? active.status === 'Anulada'
+                      ? 'A banca considerou a questão correta para todos os candidatos.'
+                      : 'Consulte a página original e use a resolução como referência de correção.'
                     : 'Gabarito oficial: alternativa ' +
                       active.answerLabel +
                       '.'}
                 </span>
               </div>
             )}
-          </section>
-
-          <aside className="list">
-            <div className="list-head">
-              <span>{filtered.length} questões</span>
-              <small>{institution === 'Todas' ? 'ITA + IME' : institution}</small>
-            </div>
-            {filtered.map((question) => (
-              <button
-                key={question.id}
-                className={
-                  question.id === active.id ? 'qcard active' : 'qcard'
-                }
-                onClick={() => openQuestion(question)}
-              >
-                <div>
-                  <span>{question.code}</span>
-                  <i>
-                    {question.status === 'Anulada'
-                      ? 'Anulada'
-                      : question.level}
-                  </i>
-                </div>
-                <strong>{question.title}</strong>
-                <p>{question.text}</p>
-                <small>
-                  <span>
-                    {question.institution} · {question.topic}
-                  </span>
-                  <b>→</b>
-                </small>
+            <div className="question-nav">
+              <button disabled={!previousQuestion} onClick={() => previousQuestion && openQuestion(previousQuestion)}>
+                ← Anterior
               </button>
-            ))}
-          </aside>
+              <span>
+                {activeIndex >= 0 ? activeIndex + 1 : 1} de {filtered.length} no filtro atual
+              </span>
+              <button disabled={!nextQuestion} onClick={() => nextQuestion && openQuestion(nextQuestion)}>
+                Próxima →
+              </button>
+            </div>
+          </section>
         </div>
       )}
 
@@ -643,10 +690,11 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
                     chooseInstitution(event.target.value as InstitutionFilter)
                   }
                 >
-                  <option value="Todas">ITA + IME + ENEM</option>
+                  <option value="Todas">ITA + IME + ENEM + Simuladão</option>
                   <option value="ITA">ITA</option>
                   <option value="IME">IME</option>
                   <option value="ENEM">ENEM</option>
+                  <option value="FTD">FTD / Simuladão</option>
                 </select>
                 <select
                   aria-label="Edição no gerador"
@@ -802,6 +850,7 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
                   <option value="ITA">ITA</option>
                   <option value="IME">IME</option>
                   <option value="ENEM">ENEM</option>
+                  <option value="FTD">FTD / Simuladão</option>
                 </select>
               </label>
               <label>

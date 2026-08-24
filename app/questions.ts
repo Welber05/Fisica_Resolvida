@@ -1,6 +1,7 @@
 import { enemQuestions } from './enem-questions';
+import { simuladaoQuestions } from './simuladao-questions';
 
-export type Institution = 'ITA' | 'IME' | 'ENEM';
+export type Institution = 'ITA' | 'IME' | 'ENEM' | 'FTD';
 
 export type Question = {
   id: number;
@@ -28,6 +29,7 @@ export type Question = {
 };
 
 export const importedQuestions: Question[] = [
+  ...simuladaoQuestions,
   ...enemQuestions,
   {
     "id": 2026013,

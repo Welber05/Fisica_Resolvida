@@ -114,3 +114,29 @@ export const consentEvents = sqliteTable(
   },
   (table) => [index('idx_consent_user').on(table.userId, table.occurredAt)],
 );
+
+export const userQuestionProgress = sqliteTable(
+  'user_question_progress',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    userId: text('user_id').notNull().references(() => users.id),
+    questionId: integer('question_id').notNull(),
+    questionCode: text('question_code').notNull(),
+    institution: text('institution').notNull(),
+    topic: text('topic').notNull(),
+    edition: text('edition').notNull(),
+    status: text('status').notNull().default('viewed'),
+    selectedAnswer: integer('selected_answer'),
+    correctAnswer: integer('correct_answer'),
+    attempts: integer('attempts').notNull().default(0),
+    correctAttempts: integer('correct_attempts').notNull().default(0),
+    firstSeenAt: integer('first_seen_at').notNull(),
+    lastSeenAt: integer('last_seen_at').notNull(),
+    lastAnsweredAt: integer('last_answered_at'),
+  },
+  (table) => [
+    uniqueIndex('idx_progress_user_question').on(table.userId, table.questionId),
+    index('idx_progress_user_status').on(table.userId, table.status),
+    index('idx_progress_user_topic').on(table.userId, table.topic),
+  ],
+);

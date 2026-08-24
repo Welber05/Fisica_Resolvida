@@ -124,6 +124,26 @@ async function initializeSchema() {
       occurred_at INTEGER NOT NULL
     )`,
     'CREATE INDEX IF NOT EXISTS idx_consent_user ON consent_events(user_id, occurred_at)',
+    `CREATE TABLE IF NOT EXISTS user_question_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      question_id INTEGER NOT NULL,
+      question_code TEXT NOT NULL,
+      institution TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      edition TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'viewed',
+      selected_answer INTEGER,
+      correct_answer INTEGER,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      correct_attempts INTEGER NOT NULL DEFAULT 0,
+      first_seen_at INTEGER NOT NULL,
+      last_seen_at INTEGER NOT NULL,
+      last_answered_at INTEGER
+    )`,
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_progress_user_question ON user_question_progress(user_id, question_id)',
+    'CREATE INDEX IF NOT EXISTS idx_progress_user_status ON user_question_progress(user_id, status)',
+    'CREATE INDEX IF NOT EXISTS idx_progress_user_topic ON user_question_progress(user_id, topic)',
   ];
 
   await db.batch(statements.map((statement) => db.prepare(statement)));

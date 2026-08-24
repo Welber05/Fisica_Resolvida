@@ -8,6 +8,13 @@
       "when": 1787408445162,
       "tag": "0000_misty_star_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787576524092,
+      "tag": "0001_violet_killraven",
+      "breakpoints": true
     }
   ]
 }
