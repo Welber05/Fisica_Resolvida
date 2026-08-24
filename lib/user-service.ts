@@ -14,6 +14,8 @@ import type {
   EducatorVerificationStatus,
   PaymentMethod,
   ProfessionalType,
+  QuestionCuration,
+  QuestionVisibilityStatus,
   SafeUser,
   SocialLinks,
   TeacherSchool,
@@ -133,6 +135,37 @@ type AcademicContentRow = {
   notes: string | null;
   created_at: number;
   updated_at: number;
+};
+
+type QuestionCurationRow = {
+  question_id: number;
+  visibility_status: QuestionVisibilityStatus;
+  institution: string | null;
+  institution_name: string | null;
+  edition: string | null;
+  phase: string | null;
+  year: number | null;
+  number: number | null;
+  topic: string | null;
+  level: string | null;
+  title: string | null;
+  statement_text: string | null;
+  options_json: string;
+  answer: number | null;
+  answer_label: string | null;
+  question_status: string | null;
+  video: string | null;
+  script_status: string | null;
+  source_page: number | null;
+  source_file: string | null;
+  source_image: string | null;
+  essential_figure: number | null;
+  bncc_codes_json: string;
+  notes: string | null;
+  updated_by: string | null;
+  created_at: number;
+  updated_at: number;
+  deleted_at: number | null;
 };
 
 export class ApiAccessError extends Error {
@@ -368,6 +401,14 @@ export async function listAcademicContentItems(): Promise<AcademicContentItem[]>
   return result.results.map(mapAcademicContent);
 }
 
+export async function listQuestionCurations(): Promise<QuestionCuration[]> {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare('SELECT * FROM question_curations ORDER BY updated_at DESC')
+    .all<QuestionCurationRow>();
+  return result.results.map(mapQuestionCuration);
+}
+
 export async function dashboardMetrics() {
   await ensureSchema();
   const db = getD1();
@@ -593,6 +634,51 @@ function mapAcademicContent(row: AcademicContentRow): AcademicContentItem {
     notes: row.notes ?? '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  };
+}
+
+function mapQuestionCuration(row: QuestionCurationRow): QuestionCuration {
+  let options: string[] = [];
+  let bnccCodes: string[] = [];
+  try {
+    options = JSON.parse(row.options_json || '[]') as string[];
+  } catch {
+    options = [];
+  }
+  try {
+    bnccCodes = JSON.parse(row.bncc_codes_json || '[]') as string[];
+  } catch {
+    bnccCodes = [];
+  }
+  return {
+    questionId: row.question_id,
+    visibilityStatus: row.visibility_status,
+    institution: row.institution ?? '',
+    institutionName: row.institution_name ?? '',
+    edition: row.edition ?? '',
+    phase: row.phase ?? '',
+    year: row.year,
+    number: row.number,
+    topic: row.topic ?? '',
+    level: row.level ?? '',
+    title: row.title ?? '',
+    text: row.statement_text ?? '',
+    options,
+    answer: row.answer,
+    answerLabel: row.answer_label ?? '',
+    questionStatus: row.question_status ?? '',
+    video: row.video ?? '',
+    scriptStatus: row.script_status ?? '',
+    sourcePage: row.source_page,
+    sourceFile: row.source_file ?? '',
+    sourceImage: row.source_image ?? '',
+    essentialFigure: row.essential_figure === null ? null : Boolean(row.essential_figure),
+    bnccCodes,
+    notes: row.notes ?? '',
+    updatedBy: row.updated_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    deletedAt: row.deleted_at,
   };
 }
 

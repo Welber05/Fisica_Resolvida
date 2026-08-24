@@ -60,7 +60,7 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
         const avatarData = (await avatarResponse.json()) as { error?: string };
         if (!avatarResponse.ok) throw new Error(avatarData.error || 'Cadastro salvo, mas a imagem não foi enviada.');
       }
-      window.location.href = initialUser.role === 'user' ? '/' : '/painel';
+      window.location.href = initialUser.role === 'user' ? '/acervo' : '/painel';
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Ocorreu um erro inesperado.');
       setBusy(false);

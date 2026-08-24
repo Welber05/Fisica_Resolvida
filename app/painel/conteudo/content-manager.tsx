@@ -21,10 +21,12 @@ export default function ContentManager({
   initialItems,
   questionCount,
   editionCount,
+  curatedCount,
 }: {
   initialItems: AcademicContentItem[];
   questionCount: number;
   editionCount: number;
+  curatedCount: number;
 }) {
   const [items, setItems] = useState(initialItems);
   const [editing, setEditing] = useState<AcademicContentItem | null>(null);
@@ -63,7 +65,8 @@ export default function ContentManager({
     <main className="dashboard-page">
       <div className="dashboard-heading"><div><p className="eyebrow">GESTÃO ACADÊMICA</p><h1>Conteúdo acadêmico</h1><p>Gerencie lotes de questões, provas, roteiros e videoaulas ligadas ao acervo.</p></div><span>{questionCount} questões · {editionCount} edições</span></div>
       {message && <p className={`toast ${message.toLowerCase().includes('não') || message.toLowerCase().includes('erro') ? 'error' : 'success'}`}>{message}</p>}
-      <section className="academic-summary"><article><span>∑</span><strong>{questionCount}</strong><p>questões importadas no acervo principal</p></article><article><span>▣</span><strong>{items.length}</strong><p>registros acadêmicos gerenciáveis</p></article><article><span>▶</span><strong>{items.filter((item) => item.kind === 'video').length}</strong><p>videoaulas/roteiros cadastrados</p></article></section>
+      <section className="academic-summary"><article><span>∑</span><strong>{questionCount}</strong><p>questões importadas no acervo principal</p></article><article><span>✎</span><strong>{curatedCount}</strong><p>questões com curadoria em Gestão</p></article><article><span>▣</span><strong>{items.length}</strong><p>registros acadêmicos gerenciáveis</p></article><article><span>▶</span><strong>{items.filter((item) => item.kind === 'video').length}</strong><p>videoaulas/roteiros cadastrados</p></article></section>
+      <p className="empty-note"><a href="/painel/questoes">Abrir Questões cadastradas</a> para editar assunto, dificuldade, BNCC, status e demais filtros do acervo.</p>
       <section className="admin-crud-grid">
         <div className="admin-list">
           <div className="users-tools"><input placeholder="Buscar conteúdo por título, instituição, tema ou edição" value={query} onChange={(event) => setQuery(event.target.value)} /></div>

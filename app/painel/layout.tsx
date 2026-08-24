@@ -18,6 +18,7 @@ export default async function ManagementLayout({ children }: { children: React.R
           <a href="/painel">Visão geral</a>
           {canManageUsers && <a href="/painel/usuarios">Usuários e equipe</a>}
           {canManageUsers && <a href="/painel/faturamento">Faturamento</a>}
+          <a href="/painel/questoes">Questões cadastradas</a>
           <a href="/painel/conteudo">Conteúdo acadêmico</a>
           <a href="/ajuda">Guia de uso</a>
         </nav>
@@ -25,7 +26,7 @@ export default async function ManagementLayout({ children }: { children: React.R
         <div className="management-bottom"><a href="/conta">Minha conta</a><a href={chatGPTSignOutPath('/login')}>Sair</a></div>
       </aside>
       <div className="management-main">
-        <header className="management-top"><div><span>PAINEL DE GERENCIAMENTO</span><strong>Física Resolvida</strong></div><Link href="/" prefetch={false}>← Voltar ao acervo</Link></header>
+        <header className="management-top"><div><span>PAINEL DE GERENCIAMENTO</span><strong>Física Resolvida</strong></div><Link href="/acervo" prefetch={false}>← Voltar ao acervo</Link></header>
         {children}
       </div>
     </div>

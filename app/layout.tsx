@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import './management.css';
+import './landing.css';
 
 const title = 'Física Resolvida — Acervo ITA e IME';
 const description =

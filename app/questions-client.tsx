@@ -3,18 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { importedQuestions, Question } from './questions';
-import type { SafeUser, TeacherSchool } from '@/lib/user-types';
+import { bnccForQuestion, bnccLabel, bnccSkills } from '@/lib/bncc';
+import { applyQuestionCurations } from '@/lib/question-overrides';
+import type { QuestionCuration, SafeUser, TeacherSchool } from '@/lib/user-types';
 
 type View = 'questoes' | 'prova' | 'cadastro' | 'roteiros';
 type InstitutionFilter = 'Todas' | Question['institution'];
 type DifficultyFilter = 'Todas' | 'Fácil' | 'Médio' | 'Difícil';
-
-type BnccSkill = {
-  code: string;
-  label: string;
-  topics: string[];
-  keywords: string[];
-};
 
 const topicIcons: Record<string, string> = {
   'Mecânica': '↗',
@@ -41,39 +36,6 @@ const topicIcons: Record<string, string> = {
 const institutions: InstitutionFilter[] = ['Todas', 'ITA', 'IME', 'ENEM', 'FTD'];
 const difficultyLevels: DifficultyFilter[] = ['Todas', 'Fácil', 'Médio', 'Difícil'];
 
-const bnccSkills: BnccSkill[] = [
-  {
-    code: 'EM13CNT101',
-    label: 'Energia, matéria e conservação',
-    topics: ['Mecânica', 'Dinâmica', 'Estática', 'Gravitação', 'Fluidos', 'Hidrostática', 'Hidrodinâmica', 'Termologia'],
-    keywords: ['energia', 'trabalho', 'potência', 'quantidade de movimento', 'colisão', 'calor', 'temperatura', 'pressão'],
-  },
-  {
-    code: 'EM13CNT103',
-    label: 'Radiações, ondas e aplicações',
-    topics: ['Ondulatória', 'Óptica', 'Óptica Geométrica', 'Física moderna'],
-    keywords: ['onda', 'frequência', 'comprimento de onda', 'interferência', 'difração', 'radiação', 'luz', 'fóton'],
-  },
-  {
-    code: 'EM13CNT106',
-    label: 'Energia elétrica e tecnologias',
-    topics: ['Eletricidade', 'Eletrodinâmica', 'Eletrostática', 'Eletromagnetismo'],
-    keywords: ['corrente', 'tensão', 'resistência', 'circuito', 'campo elétrico', 'campo magnético', 'indução'],
-  },
-  {
-    code: 'EM13CNT201',
-    label: 'Modelos, previsões e sistemas físicos',
-    topics: ['Física geral', 'Cinemática', 'Oscilações'],
-    keywords: ['modelo', 'gráfico', 'função', 'movimento', 'oscilador', 'equilíbrio', 'trajetória'],
-  },
-  {
-    code: 'EM13CNT301',
-    label: 'Investigação, dados e comunicação científica',
-    topics: [],
-    keywords: ['experimento', 'medida', 'dados', 'gráfico', 'estimativa', 'incerteza', 'evidência'],
-  },
-];
-
 function examKey(question: Question) {
   return question.institution + '|' + question.edition;
 }
@@ -93,29 +55,21 @@ function normalizedLevel(question: Question): DifficultyFilter {
   return 'Difícil';
 }
 
-function bnccForQuestion(question: Question) {
-  const haystack = `${question.title} ${question.text} ${question.topic}`.toLowerCase();
-  const matches = bnccSkills.filter(
-    (skill) =>
-      skill.topics.includes(question.topic) ||
-      skill.keywords.some((keyword) => haystack.includes(keyword.toLowerCase())),
-  );
-  return matches.length ? matches.slice(0, 2) : [bnccSkills[3]];
-}
-
-function bnccLabel(skill: BnccSkill) {
-  return `${skill.code} · ${skill.label}`;
-}
-
 export default function QuestionsClient({
   currentUser,
   teacherSchools = [],
+  questionCurations = [],
 }: {
   currentUser: SafeUser;
   teacherSchools?: TeacherSchool[];
+  questionCurations?: QuestionCuration[];
 }) {
-  const [questions, setQuestions] = useState<Question[]>(importedQuestions);
-  const [active, setActive] = useState(importedQuestions[0]);
+  const curatedQuestions = useMemo(
+    () => applyQuestionCurations(importedQuestions, questionCurations),
+    [questionCurations],
+  );
+  const [questions, setQuestions] = useState<Question[]>(curatedQuestions);
+  const [active, setActive] = useState(curatedQuestions[0] ?? importedQuestions[0]);
   const [choice, setChoice] = useState<number | null>(null);
   const [checked, setChecked] = useState(false);
   const [topic, setTopic] = useState('Todos');
@@ -126,10 +80,10 @@ export default function QuestionsClient({
   const [query, setQuery] = useState('');
   const [view, setView] = useState<View>('questoes');
   const [selected, setSelected] = useState<number[]>(
-    importedQuestions.slice(0, 3).map((question) => question.id),
+    curatedQuestions.slice(0, 3).map((question) => question.id),
   );
   const [showSource, setShowSource] = useState(false);
-  const [scriptQuestion, setScriptQuestion] = useState(importedQuestions[0].id);
+  const [scriptQuestion, setScriptQuestion] = useState((curatedQuestions[0] ?? importedQuestions[0]).id);
   const canManageContent = ['professor', 'manager', 'admin'].includes(currentUser.role);
   const activeSchool = teacherSchools.find((school) => school.isActive) ?? teacherSchools[0] ?? null;
   const initials = (currentUser.fullName || currentUser.email)

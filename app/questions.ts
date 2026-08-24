@@ -26,6 +26,10 @@ export type Question = {
   sourceFile: string;
   sourceImage: string;
   essentialFigure: boolean;
+  bnccCodes?: string[];
+  visibilityStatus?: 'active' | 'inactive' | 'deleted';
+  curationNotes?: string;
+  curatedAt?: number;
 };
 
 export const importedQuestions: Question[] = [

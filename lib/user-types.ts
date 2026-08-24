@@ -134,6 +134,39 @@ export type AcademicContentItem = {
   updatedAt: number;
 };
 
+export type QuestionVisibilityStatus = 'active' | 'inactive' | 'deleted';
+
+export type QuestionCuration = {
+  questionId: number;
+  visibilityStatus: QuestionVisibilityStatus;
+  institution: string;
+  institutionName: string;
+  edition: string;
+  phase: string;
+  year: number | null;
+  number: number | null;
+  topic: string;
+  level: string;
+  title: string;
+  text: string;
+  options: string[];
+  answer: number | null;
+  answerLabel: string;
+  questionStatus: string;
+  video: string;
+  scriptStatus: string;
+  sourcePage: number | null;
+  sourceFile: string;
+  sourceImage: string;
+  essentialFigure: boolean | null;
+  bnccCodes: string[];
+  notes: string;
+  updatedBy: string | null;
+  createdAt: number;
+  updatedAt: number;
+  deletedAt: number | null;
+};
+
 export const roleLabels: Record<AppRole, string> = {
   user: 'Usuário',
   professor: 'Professor',

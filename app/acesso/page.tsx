@@ -10,7 +10,7 @@ export default async function AccessStatusPage() {
     allowIncomplete: true,
     allowRestricted: true,
   });
-  if (user.status === 'active') redirect(user.profileComplete ? '/' : '/cadastro');
+  if (user.status === 'active') redirect(user.profileComplete ? '/acervo' : '/cadastro');
   return (
     <main className="status-page">
       <section className="status-card">
