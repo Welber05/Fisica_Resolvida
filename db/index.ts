@@ -356,6 +356,7 @@ async function initializeSchema() {
           educator_verification_status = 'approved',
           profile_complete = 1,
           privacy_accepted_at = COALESCE(users.privacy_accepted_at, excluded.privacy_accepted_at),
+          deleted_at = NULL,
           updated_by = excluded.updated_by,
           updated_at = excluded.updated_at
         `,

@@ -298,7 +298,7 @@ async function getOrCreateOwnerUser(db: D1Database, identity: ChatGPTUser): Prom
   const normalizedEmail = identity.email.trim().toLowerCase();
   const now = Date.now();
   let row = await db
-    .prepare("SELECT * FROM users WHERE account_type = 'human' AND email = ? AND deleted_at IS NULL LIMIT 1")
+    .prepare("SELECT * FROM users WHERE account_type = 'human' AND email = ? LIMIT 1")
     .bind(normalizedEmail)
     .first<UserRow>();
 
@@ -311,6 +311,10 @@ async function getOrCreateOwnerUser(db: D1Database, identity: ChatGPTUser): Prom
 
   if (row) {
     await db
+      .prepare("UPDATE users SET auth_user_id = NULL, updated_by = ?, updated_at = ? WHERE auth_user_id = ? AND id <> ?")
+      .bind(CODEX_ACTOR_ID, now, identity.userId, row.id)
+      .run();
+    await db
       .prepare(
         `UPDATE users SET
           auth_user_id = ?, email = ?, full_name = CASE WHEN full_name = '' THEN ? ELSE full_name END,
@@ -321,6 +325,7 @@ async function getOrCreateOwnerUser(db: D1Database, identity: ChatGPTUser): Prom
           educator_verification_status = 'approved',
           profile_complete = 1,
           privacy_accepted_at = COALESCE(privacy_accepted_at, ?),
+          deleted_at = NULL,
           updated_by = ?, updated_at = ?
          WHERE id = ?`,
       )
@@ -332,6 +337,10 @@ async function getOrCreateOwnerUser(db: D1Database, identity: ChatGPTUser): Prom
   }
 
   const id = 'owner-welber-admin';
+  await db
+    .prepare("UPDATE users SET auth_user_id = NULL, updated_by = ?, updated_at = ? WHERE auth_user_id = ?")
+    .bind(CODEX_ACTOR_ID, now, identity.userId)
+    .run();
   await db
     .prepare(
       `INSERT INTO users (
