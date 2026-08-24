@@ -41,6 +41,8 @@ export async function PATCH(
       await db
         .prepare(
           `UPDATE users SET full_name = ?, phone = ?, education_level = ?,
+            professional_type = ?, educator_verification_status = ?,
+            institutional_email = ?, functional_id = ?, cpf = ?,
             lattes_url = ?, orcid = ?, social_links_json = ?, address_postal_code = ?,
             address_street = ?, address_number = ?, address_complement = ?,
             address_neighborhood = ?, address_city = ?, address_state = ?,
@@ -50,6 +52,15 @@ export async function PATCH(
           profile.fullName,
           profile.phone,
           profile.educationLevel,
+          profile.professionalType,
+          profile.professionalType === 'student'
+            ? 'not_requested'
+            : target.educatorVerificationStatus === 'approved'
+              ? 'approved'
+              : 'pending',
+          profile.institutionalEmail,
+          profile.functionalId,
+          profile.cpf,
           profile.lattesUrl,
           profile.orcid,
           JSON.stringify(profile.socialLinks),
@@ -67,6 +78,23 @@ export async function PATCH(
         )
         .run();
       await writeAudit(actor.id, target.id, 'user.profile_updated');
+    } else if (operation === 'educator-verification') {
+      if (!canManageTarget(actor, target)) throw new ApiAccessError(403, 'Alteração não autorizada.');
+      const verificationStatus = String(body.educatorVerificationStatus || '');
+      if (!['not_requested', 'pending', 'approved', 'rejected'].includes(verificationStatus)) {
+        throw new ValidationError('Estado de validação docente inválido.');
+      }
+      await db
+        .prepare(
+          `UPDATE users SET educator_verification_status = ?, updated_by = ?, updated_at = ?
+           WHERE id = ?`,
+        )
+        .bind(verificationStatus, actor.id, now, target.id)
+        .run();
+      await writeAudit(actor.id, target.id, 'user.educator_verification_changed', {
+        from: target.educatorVerificationStatus,
+        to: verificationStatus,
+      });
     } else if (operation === 'role') {
       const allowedRoles: AppRole[] = actor.role === 'admin'
         ? ['user', 'professor', 'manager', 'admin']

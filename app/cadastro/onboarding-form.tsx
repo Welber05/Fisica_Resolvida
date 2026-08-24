@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { educationLevels, type SafeUser } from '@/lib/user-types';
+import { educationLevels, professionalTypeLabels, type SafeUser } from '@/lib/user-types';
 import { LEGAL_DOCUMENT_VERSION } from '@/lib/legal';
 
 export default function OnboardingForm({ initialUser }: { initialUser: SafeUser }) {
@@ -19,6 +19,10 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
       email: initialUser.email,
       phone: form.get('phone'),
       educationLevel: form.get('educationLevel'),
+      professionalType: form.get('professionalType'),
+      institutionalEmail: form.get('institutionalEmail'),
+      functionalId: form.get('functionalId'),
+      cpf: form.get('cpf'),
       addressPostalCode: form.get('addressPostalCode'),
       addressStreet: form.get('addressStreet'),
       addressNumber: form.get('addressNumber'),
@@ -90,6 +94,10 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
               <label>E-mail<input name="email" type="email" value={initialUser.email} readOnly /></label>
               <label>Telefone com DDD<input name="phone" required placeholder="(11) 99999-9999" defaultValue={initialUser.phone} /></label>
               <label className="wide">Nível escolar<select name="educationLevel" required defaultValue={initialUser.educationLevel}><option value="">Selecione...</option>{educationLevels.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label>Classificação profissional<select name="professionalType" defaultValue={initialUser.professionalType}>{Object.entries(professionalTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+              <label>E-mail institucional<input name="institutionalEmail" type="email" defaultValue={initialUser.institutionalEmail ?? ''} /></label>
+              <label>Número funcional<input name="functionalId" defaultValue={initialUser.functionalId ?? ''} /></label>
+              <label>CPF para validação<input name="cpf" inputMode="numeric" autoComplete="off" defaultValue={initialUser.cpf ?? ''} /></label>
             </div>
           </div>
 

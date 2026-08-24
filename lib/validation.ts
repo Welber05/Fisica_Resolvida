@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { ApiAccessError } from './user-service';
-import { educationLevels, type AccountStatus, type AppRole, type SocialLinks } from './user-types';
+import {
+  educationLevels,
+  type AccountStatus,
+  type AppRole,
+  type ProfessionalType,
+  type SocialLinks,
+} from './user-types';
 
 export class ValidationError extends Error {}
 
@@ -33,6 +39,13 @@ export function validateProfilePayload(value: unknown, expectedEmail: string) {
   if (!educationLevels.some(([code]) => code === educationLevel)) {
     throw new ValidationError('Selecione um nível escolar válido.');
   }
+  const professionalType = String(input.professionalType || 'student') as ProfessionalType;
+  if (!['student', 'teacher', 'education_professional'].includes(professionalType)) {
+    throw new ValidationError('Selecione uma classificação profissional válida.');
+  }
+  const institutionalEmail = optionalEmail(input.institutionalEmail, 'e-mail institucional');
+  const functionalId = optionalText(input.functionalId, 60);
+  const cpf = optionalCpf(input.cpf);
 
   const socialInput = objectValue(input.socialLinks ?? {});
   const socialLinks: SocialLinks = {};
@@ -56,6 +69,10 @@ export function validateProfilePayload(value: unknown, expectedEmail: string) {
     email,
     phone: normalizePhone(input.phone),
     educationLevel,
+    professionalType,
+    institutionalEmail: professionalType === 'student' ? null : institutionalEmail || null,
+    functionalId: professionalType === 'student' ? null : functionalId || null,
+    cpf: professionalType === 'student' ? null : cpf || null,
     lattesUrl: lattesUrl || null,
     orcid: orcid || null,
     socialLinks,
@@ -169,6 +186,24 @@ function requiredEmail(value: unknown) {
     throw new ValidationError('Informe um e-mail válido.');
   }
   return email;
+}
+
+function optionalEmail(value: unknown, label: string) {
+  const email = String(value ?? '').trim().toLowerCase();
+  if (!email) return '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new ValidationError(`Informe um ${label} válido.`);
+  }
+  return email;
+}
+
+function optionalCpf(value: unknown) {
+  const cpf = String(value ?? '').replace(/\D/g, '');
+  if (!cpf) return '';
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+    throw new ValidationError('Informe um CPF válido com 11 dígitos ou deixe em branco.');
+  }
+  return cpf;
 }
 
 function optionalUrl(value: unknown, label: string) {

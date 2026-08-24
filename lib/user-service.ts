@@ -3,7 +3,18 @@ import 'server-only';
 import { redirect } from 'next/navigation';
 import { getChatGPTUser, requireChatGPTUser, type ChatGPTUser } from '@/app/chatgpt-auth';
 import { CODEX_ACTOR_ID, ensureSchema, getD1, getInitialAdminEmail } from '@/db';
-import type { AccountStatus, AccountType, AppRole, AppUser, BillingProfile, SafeUser, SocialLinks } from './user-types';
+import type {
+  AccountStatus,
+  AccountType,
+  AppRole,
+  AppUser,
+  BillingProfile,
+  EducatorVerificationStatus,
+  ProfessionalType,
+  SafeUser,
+  SocialLinks,
+  TeacherSchool,
+} from './user-types';
 
 type UserRow = {
   id: string;
@@ -17,6 +28,11 @@ type UserRow = {
   status: AccountStatus;
   status_reason: string | null;
   suspended_until: number | null;
+  professional_type: ProfessionalType;
+  educator_verification_status: EducatorVerificationStatus;
+  institutional_email: string | null;
+  functional_id: string | null;
+  cpf: string | null;
   profile_complete: number;
   avatar_key: string | null;
   lattes_url: string | null;
@@ -34,6 +50,23 @@ type UserRow = {
   created_at: number;
   updated_at: number;
   deleted_at: number | null;
+};
+
+type TeacherSchoolRow = {
+  id: string;
+  user_id: string;
+  name: string;
+  city: string | null;
+  state: string | null;
+  institutional_email: string | null;
+  functional_id: string | null;
+  logo_key: string | null;
+  header_title: string;
+  header_subtitle: string;
+  footer_text: string;
+  is_active: number;
+  created_at: number;
+  updated_at: number;
 };
 
 type BillingRow = {
@@ -242,6 +275,19 @@ export async function listBillingProfiles() {
   }));
 }
 
+export async function listTeacherSchools(userId: string): Promise<TeacherSchool[]> {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare(
+      `SELECT * FROM teacher_schools
+       WHERE user_id = ? AND deleted_at IS NULL
+       ORDER BY is_active DESC, updated_at DESC`,
+    )
+    .bind(userId)
+    .all<TeacherSchoolRow>();
+  return result.results.map(mapTeacherSchool);
+}
+
 export async function dashboardMetrics() {
   await ensureSchema();
   const db = getD1();
@@ -329,6 +375,11 @@ export function safeUser(user: AppUser): SafeUser {
     status: user.status,
     statusReason: user.statusReason,
     suspendedUntil: user.suspendedUntil,
+    professionalType: user.professionalType,
+    educatorVerificationStatus: user.educatorVerificationStatus,
+    institutionalEmail: user.institutionalEmail,
+    functionalId: user.functionalId,
+    cpf: user.cpf,
     profileComplete: user.profileComplete,
     avatarUrl: user.avatarKey ? `/api/avatar/${user.id}` : null,
     lattesUrl: user.lattesUrl,
@@ -360,6 +411,11 @@ function mapUser(row: UserRow): AppUser {
     status: row.status,
     statusReason: row.status_reason,
     suspendedUntil: row.suspended_until,
+    professionalType: row.professional_type ?? 'student',
+    educatorVerificationStatus: row.educator_verification_status ?? 'not_requested',
+    institutionalEmail: row.institutional_email,
+    functionalId: row.functional_id,
+    cpf: row.cpf,
     profileComplete: Boolean(row.profile_complete),
     avatarKey: row.avatar_key,
     lattesUrl: row.lattes_url,
@@ -379,6 +435,25 @@ function mapUser(row: UserRow): AppUser {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     deletedAt: row.deleted_at,
+  };
+}
+
+function mapTeacherSchool(row: TeacherSchoolRow): TeacherSchool {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    name: row.name,
+    city: row.city ?? '',
+    state: row.state ?? '',
+    institutionalEmail: row.institutional_email ?? '',
+    functionalId: row.functional_id ?? '',
+    logoUrl: row.logo_key ? `/api/schools/${row.id}/logo` : null,
+    headerTitle: row.header_title,
+    headerSubtitle: row.header_subtitle,
+    footerText: row.footer_text,
+    isActive: Boolean(row.is_active),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
   };
 }
 

@@ -32,15 +32,17 @@ export async function POST(request: Request) {
 
     const id = crypto.randomUUID();
     const now = Date.now();
+    const educatorVerificationStatus = profile.professionalType === 'student' ? 'not_requested' : 'pending';
     await db
       .prepare(
         `INSERT INTO users (
           id, email, full_name, phone, education_level, role, status,
+          professional_type, educator_verification_status, institutional_email, functional_id, cpf,
           lattes_url, orcid, social_links_json, address_postal_code,
           address_street, address_number, address_complement, address_neighborhood,
           address_city, address_state, address_country, profile_complete,
           created_by, updated_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
+        ) VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
       )
       .bind(
         id,
@@ -49,6 +51,11 @@ export async function POST(request: Request) {
         profile.phone,
         profile.educationLevel,
         profile.role,
+        profile.professionalType,
+        educatorVerificationStatus,
+        profile.institutionalEmail,
+        profile.functionalId,
+        profile.cpf,
         profile.lattesUrl,
         profile.orcid,
         JSON.stringify(profile.socialLinks),

@@ -16,6 +16,8 @@ export async function POST(request: Request) {
     }
     const profile = validateProfilePayload(body, identity.email);
     const now = Date.now();
+    const educatorVerificationStatus =
+      profile.professionalType === 'student' ? 'not_requested' : 'pending';
     await ensureSchema();
     const db = getD1();
     await db.batch([
@@ -23,6 +25,8 @@ export async function POST(request: Request) {
         .prepare(
           `UPDATE users SET
             full_name = ?, phone = ?, education_level = ?, lattes_url = ?, orcid = ?,
+            professional_type = ?, educator_verification_status = ?,
+            institutional_email = ?, functional_id = ?, cpf = ?,
             social_links_json = ?, address_postal_code = ?, address_street = ?,
             address_number = ?, address_complement = ?, address_neighborhood = ?,
             address_city = ?, address_state = ?, address_country = ?,
@@ -35,6 +39,11 @@ export async function POST(request: Request) {
           profile.educationLevel,
           profile.lattesUrl,
           profile.orcid,
+          profile.professionalType,
+          educatorVerificationStatus,
+          profile.institutionalEmail,
+          profile.functionalId,
+          profile.cpf,
           JSON.stringify(profile.socialLinks),
           profile.address.postalCode,
           profile.address.street,
@@ -57,7 +66,9 @@ export async function POST(request: Request) {
         .bind(user.id, LEGAL_DOCUMENT_VERSION, now),
     ]);
     await writeAudit(user.id, user.id, 'profile.onboarding_completed');
-    return NextResponse.json({ user: safeUser({ ...user, ...profile, profileComplete: true }) });
+    return NextResponse.json({
+      user: safeUser({ ...user, ...profile, educatorVerificationStatus, profileComplete: true }),
+    });
   } catch (error) {
     return jsonError(error);
   }

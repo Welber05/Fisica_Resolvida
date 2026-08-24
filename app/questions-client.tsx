@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { importedQuestions, Question } from './questions';
-import type { SafeUser } from '@/lib/user-types';
+import type { SafeUser, TeacherSchool } from '@/lib/user-types';
 
 type View = 'questoes' | 'prova' | 'cadastro' | 'roteiros';
 type InstitutionFilter = 'Todas' | Question['institution'];
@@ -43,7 +43,13 @@ function safeName(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
-export default function QuestionsClient({ currentUser }: { currentUser: SafeUser }) {
+export default function QuestionsClient({
+  currentUser,
+  teacherSchools = [],
+}: {
+  currentUser: SafeUser;
+  teacherSchools?: TeacherSchool[];
+}) {
   const [questions, setQuestions] = useState<Question[]>(importedQuestions);
   const [active, setActive] = useState(importedQuestions[0]);
   const [choice, setChoice] = useState<number | null>(null);
@@ -59,6 +65,7 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
   const [showSource, setShowSource] = useState(false);
   const [scriptQuestion, setScriptQuestion] = useState(importedQuestions[0].id);
   const canManageContent = ['professor', 'manager', 'admin'].includes(currentUser.role);
+  const activeSchool = teacherSchools.find((school) => school.isActive) ?? teacherSchools[0] ?? null;
   const initials = (currentUser.fullName || currentUser.email)
     .split(/\s+/)
     .slice(0, 2)
@@ -260,7 +267,16 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
 
   function roteiroText(question: Question) {
     const resposta = question.answerLabel ?? 'Questão anulada';
+    const schoolHeader = activeSchool
+      ? [
+          activeSchool.name,
+          activeSchool.headerTitle + ' — ' + activeSchool.headerSubtitle,
+          activeSchool.footerText ? 'Observação institucional: ' + activeSchool.footerText : '',
+          '',
+        ].filter(Boolean)
+      : [];
     return [
+      ...schoolHeader,
       'ROTEIRO DE RESOLUÇÃO — ' + question.code,
       question.title,
       '',
@@ -732,9 +748,11 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
               ))}
             </div>
             <div className="paper">
-              <div className="paper-head">
-                <span>FÍSICA RESOLVIDA</span>
-                <strong>LISTA DE EXERCÍCIOS</strong>
+              <div className="paper-head custom-paper-head">
+                {activeSchool?.logoUrl && <img className="paper-school-logo" src={activeSchool.logoUrl} alt="" />}
+                <span>{activeSchool?.name ?? 'FÍSICA RESOLVIDA'}</span>
+                <strong>{activeSchool?.headerTitle ?? 'LISTA DE EXERCÍCIOS'}</strong>
+                <em>{activeSchool?.headerSubtitle ?? 'Física'}</em>
                 <p>
                   Nome: ___________________________________ Turma: __________
                 </p>
@@ -755,6 +773,11 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
                     </div>
                   </article>
                 ))}
+              {(activeSchool?.footerText || activeSchool?.name) && (
+                <footer className="paper-footer">
+                  {activeSchool?.footerText || 'Material preparado no Física Resolvida.'}
+                </footer>
+              )}
               <button
                 className="primary no-print"
                 onClick={() => window.print()}
@@ -801,6 +824,15 @@ export default function QuestionsClient({ currentUser }: { currentUser: SafeUser
               ))}
             </div>
             <article className="script-paper">
+              {activeSchool && (
+                <div className="script-school">
+                  {activeSchool.logoUrl && <img src={activeSchool.logoUrl} alt="" />}
+                  <div>
+                    <strong>{activeSchool.name}</strong>
+                    <span>{activeSchool.headerTitle} · {activeSchool.headerSubtitle}</span>
+                  </div>
+                </div>
+              )}
               <div className="script-head">
                 <span>ROTEIRO DE RESOLUÇÃO</span>
                 <strong>{roteiro.code}</strong>

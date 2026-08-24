@@ -15,6 +15,13 @@ export const users = sqliteTable(
     status: text('status').notNull().default('active'),
     statusReason: text('status_reason'),
     suspendedUntil: integer('suspended_until'),
+    professionalType: text('professional_type').notNull().default('student'),
+    educatorVerificationStatus: text('educator_verification_status')
+      .notNull()
+      .default('not_requested'),
+    institutionalEmail: text('institutional_email'),
+    functionalId: text('functional_id'),
+    cpf: text('cpf'),
     profileComplete: integer('profile_complete', { mode: 'boolean' })
       .notNull()
       .default(false),
@@ -44,6 +51,33 @@ export const users = sqliteTable(
     check('users_account_type_check', sql`${table.accountType} IN ('human','system')`),
     check('users_role_check', sql`${table.role} IN ('user','professor','manager','admin')`),
     check('users_status_check', sql`${table.status} IN ('active','inactive','blocked','suspended')`),
+    check('users_professional_type_check', sql`${table.professionalType} IN ('student','teacher','education_professional')`),
+    check('users_educator_verification_status_check', sql`${table.educatorVerificationStatus} IN ('not_requested','pending','approved','rejected')`),
+  ],
+);
+
+export const teacherSchools = sqliteTable(
+  'teacher_schools',
+  {
+    id: text('id').primaryKey(),
+    userId: text('user_id').notNull().references(() => users.id),
+    name: text('name').notNull(),
+    city: text('city'),
+    state: text('state'),
+    institutionalEmail: text('institutional_email'),
+    functionalId: text('functional_id'),
+    logoKey: text('logo_key'),
+    headerTitle: text('header_title').notNull().default('Lista de Exercícios'),
+    headerSubtitle: text('header_subtitle').notNull().default('Física'),
+    footerText: text('footer_text').notNull().default(''),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(false),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    deletedAt: integer('deleted_at'),
+  },
+  (table) => [
+    index('idx_teacher_schools_user').on(table.userId, table.deletedAt),
+    index('idx_teacher_schools_active').on(table.userId, table.isActive),
   ],
 );
 

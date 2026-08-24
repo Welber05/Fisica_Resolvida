@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import {
+  educatorVerificationLabels,
   educationLevels,
+  professionalTypeLabels,
   roleLabels,
   statusLabels,
   type AppRole,
@@ -79,6 +81,16 @@ export default function UsersManager({
     await mutate(selected.id, { operation: 'status', status: form.get('status'), reason: form.get('reason'), suspendedUntil: form.get('suspendedUntil') }, 'Estado da conta atualizado.');
   }
 
+  async function updateEducatorVerification(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!selected) return;
+    const form = new FormData(event.currentTarget);
+    await mutate(
+      selected.id,
+      { operation: 'educator-verification', educatorVerificationStatus: form.get('educatorVerificationStatus') },
+      'Validação docente atualizada.',
+    );
+  }
+
   async function mutate(id: string, payload: Record<string, unknown>, success: string) {
     setBusy(true); setMessage('');
     try {
@@ -123,9 +135,10 @@ export default function UsersManager({
           {selected ? <>
             <header><div className="avatar large">{selected.avatarUrl ? <img src={selected.avatarUrl} alt="" /> : initials(selected)}</div><div><p className="eyebrow">DETALHES DO CADASTRO</p><h2>{selected.fullName || 'Cadastro pendente'}</h2><span>{selected.email}</span></div></header>
             {selected.accountType === 'system' ? <div className="pending-banner">Ator técnico não autenticável. Identifica automações e implantações do Codex na auditoria.</div> : !selected.profileComplete && <div className="pending-banner">Aguardando confirmação dos dados e aceite de privacidade no primeiro login.</div>}
-            <div className="user-facts"><span><small>PAPEL</small><b>{roleLabels[selected.role]}</b></span><span><small>ESTADO</small><b>{statusLabels[selected.status]}</b></span><span><small>TELEFONE</small><b>{selected.phone || '—'}</b></span><span><small>NÍVEL</small><b>{educationLevels.find(([value]) => value === selected.educationLevel)?.[1] || '—'}</b></span></div>
+            <div className="user-facts"><span><small>PAPEL</small><b>{roleLabels[selected.role]}</b></span><span><small>ESTADO</small><b>{statusLabels[selected.status]}</b></span><span><small>VALIDAÇÃO DOCENTE</small><b>{educatorVerificationLabels[selected.educatorVerificationStatus]}</b></span><span><small>CLASSIFICAÇÃO</small><b>{professionalTypeLabels[selected.professionalType]}</b></span><span><small>TELEFONE</small><b>{selected.phone || '—'}</b></span><span><small>NÍVEL</small><b>{educationLevels.find(([value]) => value === selected.educationLevel)?.[1] || '—'}</b></span></div>
             {mayManageSelected ? <>
               <form className="compact-action" key={`role-${selected.id}-${selected.role}`} onSubmit={updateRole}><label>Papel de acesso<select name="role" defaultValue={selected.role}>{allowedRoles.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}</select></label><button disabled={busy}>Aplicar papel</button></form>
+              <form className="compact-action" key={`educator-${selected.id}-${selected.educatorVerificationStatus}`} onSubmit={updateEducatorVerification}><label>Validação docente<select name="educatorVerificationStatus" defaultValue={selected.educatorVerificationStatus}>{Object.entries(educatorVerificationLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><button disabled={busy}>Aplicar validação</button></form>
               <form className="compact-action status-action" key={`status-${selected.id}-${selected.status}`} onSubmit={updateStatus}><label>Estado<select name="status" defaultValue={selected.status}>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label><label>Motivo<input name="reason" required minLength={5} placeholder="Justificativa obrigatória" /></label><label>Término da suspensão<input name="suspendedUntil" type="datetime-local" /></label><button disabled={busy}>Atualizar acesso</button></form>
               <details className="edit-details"><summary>Editar dados cadastrais</summary><form key={`profile-${selected.id}`} onSubmit={updateProfile}><PersonFields user={selected} /><footer><button className="primary" disabled={busy}>Salvar dados</button></footer></form></details>
               <div className="danger-zone"><div><strong>Excluir e anonimizar</strong><p>Remove dados pessoais e faturamento, mantendo apenas a trilha mínima de auditoria.</p></div><button type="button" onClick={removeUser} disabled={busy}>Excluir cadastro</button></div>
@@ -142,6 +155,8 @@ function PersonFields({ user, allowedRoles, includeRole = false }: { user?: Safe
     <label>Nome completo<input name="fullName" required defaultValue={user?.fullName} /></label><label>E-mail<input name="email" type="email" required defaultValue={user?.email} readOnly={Boolean(user)} /></label><label>Telefone<input name="phone" required defaultValue={user?.phone} /></label>
     <label>Nível escolar<select name="educationLevel" required defaultValue={user?.educationLevel || ''}><option value="">Selecione...</option>{educationLevels.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
     {includeRole && <label>Papel<select name="role" required defaultValue="user">{allowedRoles?.map((role) => <option key={role} value={role}>{roleLabels[role]}</option>)}</select></label>}
+    <label>Classificação profissional<select name="professionalType" defaultValue={user?.professionalType || 'student'}>{Object.entries(professionalTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+    <label>E-mail institucional<input name="institutionalEmail" type="email" defaultValue={user?.institutionalEmail ?? ''} /></label><label>Número funcional<input name="functionalId" defaultValue={user?.functionalId ?? ''} /></label><label>CPF para validação<input name="cpf" inputMode="numeric" autoComplete="off" defaultValue={user?.cpf ?? ''} /></label>
     <label>CEP<input name="addressPostalCode" required defaultValue={user?.address.postalCode} /></label><label className="wide">Logradouro<input name="addressStreet" required defaultValue={user?.address.street} /></label><label>Número<input name="addressNumber" required defaultValue={user?.address.number} /></label><label>Complemento<input name="addressComplement" defaultValue={user?.address.complement} /></label><label>Bairro<input name="addressNeighborhood" defaultValue={user?.address.neighborhood} /></label><label>Cidade<input name="addressCity" required defaultValue={user?.address.city} /></label><label>Estado<input name="addressState" required defaultValue={user?.address.state} /></label><label>País<input name="addressCountry" required defaultValue={user?.address.country || 'Brasil'} /></label>
     <label>Lattes (opcional)<input name="lattesUrl" type="url" defaultValue={user?.lattesUrl ?? ''} /></label><label>ORCID (opcional)<input name="orcid" defaultValue={user?.orcid ?? ''} /></label>
     <label>Instagram (opcional)<input name="instagram" type="url" defaultValue={user?.socialLinks.instagram ?? ''} /></label><label>YouTube (opcional)<input name="youtube" type="url" defaultValue={user?.socialLinks.youtube ?? ''} /></label><label>LinkedIn (opcional)<input name="linkedin" type="url" defaultValue={user?.socialLinks.linkedin ?? ''} /></label><label>Facebook (opcional)<input name="facebook" type="url" defaultValue={user?.socialLinks.facebook ?? ''} /></label><label>X / Twitter (opcional)<input name="x" type="url" defaultValue={user?.socialLinks.x ?? ''} /></label>
@@ -149,7 +164,7 @@ function PersonFields({ user, allowedRoles, includeRole = false }: { user?: Safe
 }
 
 function personPayload(form: FormData) {
-  return { fullName: form.get('fullName'), email: form.get('email'), phone: form.get('phone'), educationLevel: form.get('educationLevel'), role: form.get('role'), addressPostalCode: form.get('addressPostalCode'), addressStreet: form.get('addressStreet'), addressNumber: form.get('addressNumber'), addressComplement: form.get('addressComplement'), addressNeighborhood: form.get('addressNeighborhood'), addressCity: form.get('addressCity'), addressState: form.get('addressState'), addressCountry: form.get('addressCountry'), lattesUrl: form.get('lattesUrl'), orcid: form.get('orcid'), socialLinks: { instagram: form.get('instagram'), youtube: form.get('youtube'), linkedin: form.get('linkedin'), facebook: form.get('facebook'), x: form.get('x') } };
+  return { fullName: form.get('fullName'), email: form.get('email'), phone: form.get('phone'), educationLevel: form.get('educationLevel'), role: form.get('role'), professionalType: form.get('professionalType'), institutionalEmail: form.get('institutionalEmail'), functionalId: form.get('functionalId'), cpf: form.get('cpf'), addressPostalCode: form.get('addressPostalCode'), addressStreet: form.get('addressStreet'), addressNumber: form.get('addressNumber'), addressComplement: form.get('addressComplement'), addressNeighborhood: form.get('addressNeighborhood'), addressCity: form.get('addressCity'), addressState: form.get('addressState'), addressCountry: form.get('addressCountry'), lattesUrl: form.get('lattesUrl'), orcid: form.get('orcid'), socialLinks: { instagram: form.get('instagram'), youtube: form.get('youtube'), linkedin: form.get('linkedin'), facebook: form.get('facebook'), x: form.get('x') } };
 }
 
 function initials(user: SafeUser) {

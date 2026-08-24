@@ -49,6 +49,11 @@ async function initializeSchema() {
       status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','blocked','suspended')),
       status_reason TEXT,
       suspended_until INTEGER,
+      professional_type TEXT NOT NULL DEFAULT 'student' CHECK (professional_type IN ('student','teacher','education_professional')),
+      educator_verification_status TEXT NOT NULL DEFAULT 'not_requested' CHECK (educator_verification_status IN ('not_requested','pending','approved','rejected')),
+      institutional_email TEXT,
+      functional_id TEXT,
+      cpf TEXT,
       profile_complete INTEGER NOT NULL DEFAULT 0,
       avatar_key TEXT,
       lattes_url TEXT,
@@ -72,6 +77,25 @@ async function initializeSchema() {
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_auth_user_id ON users(auth_user_id)',
     'CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)',
     'CREATE INDEX IF NOT EXISTS idx_users_role_status ON users(role, status)',
+    `CREATE TABLE IF NOT EXISTS teacher_schools (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      name TEXT NOT NULL,
+      city TEXT,
+      state TEXT,
+      institutional_email TEXT,
+      functional_id TEXT,
+      logo_key TEXT,
+      header_title TEXT NOT NULL DEFAULT 'Lista de Exercícios',
+      header_subtitle TEXT NOT NULL DEFAULT 'Física',
+      footer_text TEXT NOT NULL DEFAULT '',
+      is_active INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    )`,
+    'CREATE INDEX IF NOT EXISTS idx_teacher_schools_user ON teacher_schools(user_id, deleted_at)',
+    'CREATE INDEX IF NOT EXISTS idx_teacher_schools_active ON teacher_schools(user_id, is_active)',
     `CREATE TABLE IF NOT EXISTS billing_profiles (
       user_id TEXT PRIMARY KEY REFERENCES users(id),
       payer_type TEXT NOT NULL DEFAULT 'individual',
@@ -152,6 +176,17 @@ async function initializeSchema() {
     await db
       .prepare("ALTER TABLE users ADD COLUMN account_type TEXT NOT NULL DEFAULT 'human'")
       .run();
+  }
+  const userColumnNames = new Set(userColumns.results.map((column) => column.name));
+  const userColumnBackfills = [
+    ['professional_type', "ALTER TABLE users ADD COLUMN professional_type TEXT NOT NULL DEFAULT 'student'"],
+    ['educator_verification_status', "ALTER TABLE users ADD COLUMN educator_verification_status TEXT NOT NULL DEFAULT 'not_requested'"],
+    ['institutional_email', 'ALTER TABLE users ADD COLUMN institutional_email TEXT'],
+    ['functional_id', 'ALTER TABLE users ADD COLUMN functional_id TEXT'],
+    ['cpf', 'ALTER TABLE users ADD COLUMN cpf TEXT'],
+  ] as const;
+  for (const [column, statement] of userColumnBackfills) {
+    if (!userColumnNames.has(column)) await db.prepare(statement).run();
   }
 
   const now = Date.now();

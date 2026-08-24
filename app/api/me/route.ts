@@ -20,10 +20,18 @@ export async function PATCH(request: Request) {
     const { identity, user } = await requireApiUser();
     const profile = validateProfilePayload(await request.json(), identity.email);
     const now = Date.now();
+    const educatorVerificationStatus =
+      profile.professionalType === 'student'
+        ? 'not_requested'
+        : user.educatorVerificationStatus === 'approved'
+          ? 'approved'
+          : 'pending';
     await getD1()
       .prepare(
         `UPDATE users SET
           full_name = ?, phone = ?, education_level = ?, lattes_url = ?, orcid = ?,
+          professional_type = ?, educator_verification_status = ?,
+          institutional_email = ?, functional_id = ?, cpf = ?,
           social_links_json = ?, address_postal_code = ?, address_street = ?,
           address_number = ?, address_complement = ?, address_neighborhood = ?,
           address_city = ?, address_state = ?, address_country = ?, updated_by = ?, updated_at = ?
@@ -35,6 +43,11 @@ export async function PATCH(request: Request) {
         profile.educationLevel,
         profile.lattesUrl,
         profile.orcid,
+        profile.professionalType,
+        educatorVerificationStatus,
+        profile.institutionalEmail,
+        profile.functionalId,
+        profile.cpf,
         JSON.stringify(profile.socialLinks),
         profile.address.postalCode,
         profile.address.street,
@@ -50,7 +63,9 @@ export async function PATCH(request: Request) {
       )
       .run();
     await writeAudit(user.id, user.id, 'profile.updated');
-    return NextResponse.json({ user: safeUser({ ...user, ...profile, updatedAt: now }) });
+    return NextResponse.json({
+      user: safeUser({ ...user, ...profile, educatorVerificationStatus, updatedAt: now }),
+    });
   } catch (error) {
     return jsonError(error);
   }

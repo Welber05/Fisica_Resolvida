@@ -1,6 +1,8 @@
 export type AppRole = 'user' | 'professor' | 'manager' | 'admin';
 export type AccountStatus = 'active' | 'inactive' | 'blocked' | 'suspended';
 export type AccountType = 'human' | 'system';
+export type ProfessionalType = 'student' | 'teacher' | 'education_professional';
+export type EducatorVerificationStatus = 'not_requested' | 'pending' | 'approved' | 'rejected';
 
 export type SocialLinks = {
   instagram?: string;
@@ -22,6 +24,11 @@ export type AppUser = {
   status: AccountStatus;
   statusReason: string | null;
   suspendedUntil: number | null;
+  professionalType: ProfessionalType;
+  educatorVerificationStatus: EducatorVerificationStatus;
+  institutionalEmail: string | null;
+  functionalId: string | null;
+  cpf: string | null;
   profileComplete: boolean;
   avatarKey: string | null;
   lattesUrl: string | null;
@@ -69,6 +76,23 @@ export type BillingProfile = {
   updatedAt: number;
 };
 
+export type TeacherSchool = {
+  id: string;
+  userId: string;
+  name: string;
+  city: string;
+  state: string;
+  institutionalEmail: string;
+  functionalId: string;
+  logoUrl: string | null;
+  headerTitle: string;
+  headerSubtitle: string;
+  footerText: string;
+  isActive: boolean;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export const roleLabels: Record<AppRole, string> = {
   user: 'Usuário',
   professor: 'Professor',
@@ -81,6 +105,19 @@ export const statusLabels: Record<AccountStatus, string> = {
   inactive: 'Inativo',
   blocked: 'Bloqueado',
   suspended: 'Suspenso',
+};
+
+export const professionalTypeLabels: Record<ProfessionalType, string> = {
+  student: 'Aluno',
+  teacher: 'Professor',
+  education_professional: 'Profissional da educação',
+};
+
+export const educatorVerificationLabels: Record<EducatorVerificationStatus, string> = {
+  not_requested: 'Não solicitada',
+  pending: 'Em análise',
+  approved: 'Aprovada',
+  rejected: 'Rejeitada',
 };
 
 export const educationLevels = [
