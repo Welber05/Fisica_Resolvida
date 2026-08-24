@@ -20,9 +20,13 @@ const CALLBACK_PATH = '/callback';
 export async function getChatGPTUser(): Promise<ChatGPTUser | null> {
   const sessionCookie = (await cookies()).get('fr_session')?.value;
   if (sessionCookie) {
-    const { getLocalSessionIdentity } = await import('@/lib/local-auth');
-    const localUser = await getLocalSessionIdentity(sessionCookie);
-    if (localUser) return localUser;
+    try {
+      const { getLocalSessionIdentity } = await import('@/lib/local-auth');
+      const localUser = await getLocalSessionIdentity(sessionCookie);
+      if (localUser) return localUser;
+    } catch (error) {
+      console.warn('Não foi possível recuperar a sessão local.', error);
+    }
   }
 
   const requestHeaders = await headers();
