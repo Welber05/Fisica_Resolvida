@@ -10,7 +10,10 @@ export default async function AccessStatusPage() {
     allowIncomplete: true,
     allowRestricted: true,
   });
-  if (user.status === 'active') redirect(user.profileComplete ? '/acervo' : '/cadastro');
+  if (user.status === 'active') {
+    if (!user.profileComplete) redirect('/cadastro');
+    redirect(['manager', 'admin'].includes(user.role) ? '/painel' : '/acervo');
+  }
   return (
     <main className="status-page">
       <section className="status-card">

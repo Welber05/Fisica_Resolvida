@@ -11,7 +11,8 @@ export default async function LoginPage() {
   if (identity) {
     const user = await getOrCreateUser(identity);
     if (user.status !== 'active') redirect(`/acesso?status=${user.status}`);
-    redirect(user.profileComplete ? '/acervo' : '/cadastro');
+    if (!user.profileComplete) redirect('/cadastro');
+    redirect(['manager', 'admin'].includes(user.role) ? '/painel' : '/acervo');
   }
 
   return (

@@ -3,6 +3,7 @@ export type AccountStatus = 'active' | 'inactive' | 'blocked' | 'suspended';
 export type AccountType = 'human' | 'system';
 export type ProfessionalType = 'student' | 'teacher' | 'education_professional';
 export type EducatorVerificationStatus = 'not_requested' | 'pending' | 'approved' | 'rejected';
+export type AccessInviteStatus = 'active' | 'inactive' | 'expired' | 'exhausted';
 
 export type SocialLinks = {
   instagram?: string;
@@ -167,11 +168,35 @@ export type QuestionCuration = {
   deletedAt: number | null;
 };
 
+export type AccessInvite = {
+  id: string;
+  code: string;
+  email: string;
+  role: AppRole;
+  professionalType: ProfessionalType;
+  licenseType: string;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: number | null;
+  status: AccessInviteStatus;
+  notes: string;
+  createdBy: string | null;
+  createdAt: number;
+  updatedAt: number;
+};
+
 export const roleLabels: Record<AppRole, string> = {
-  user: 'Usuário',
+  user: 'Aluno',
   professor: 'Professor',
   manager: 'Gerente',
   admin: 'Administrador',
+};
+
+export const roleDescriptions: Record<AppRole, string> = {
+  user: 'Acessa questões, progresso e provas permitidas.',
+  professor: 'Cadastra escolas, personaliza cabeçalhos/rodapés, gera provas e roteiros.',
+  manager: 'Gerencia usuários, equipe, faturamento, conteúdo e questões.',
+  admin: 'Tem acesso total, incluindo configurações críticas e auditoria.',
 };
 
 export const statusLabels: Record<AccountStatus, string> = {

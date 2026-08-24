@@ -140,7 +140,7 @@ export default function AccountClient({
           <button className={tab === 'perfil' ? 'active' : ''} onClick={() => { setTab('perfil'); setMessage(''); }}>Perfil e endereço</button>
           <button className={tab === 'faturamento' ? 'active' : ''} onClick={() => { setTab('faturamento'); setMessage(''); }}>Faturamento</button>
           {canCustomizeDocuments && <button className={tab === 'escolas' ? 'active' : ''} onClick={() => { setTab('escolas'); setMessage(''); }}>Escolas e documentos</button>}
-          {user.role !== 'user' && <Link href="/painel">Painel de gestão</Link>}
+          {['manager', 'admin'].includes(user.role) && <Link href="/painel">Painel de gestão</Link>}
           <Link href="/">Banco de questões</Link>
           <Link href="/ajuda">Guia de uso</Link>
         </nav>

@@ -6,9 +6,8 @@ import { roleLabels } from '@/lib/user-types';
 export const dynamic = 'force-dynamic';
 
 export default async function ManagementLayout({ children }: { children: React.ReactNode }) {
-  const { user } = await requirePageUser('/painel', { roles: ['admin', 'manager', 'professor'] });
+  const { user } = await requirePageUser('/painel', { roles: ['admin', 'manager'] });
   const initials = (user.fullName || user.email).split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
-  const canManageUsers = ['admin', 'manager'].includes(user.role);
   return (
     <div className="management-layout">
       <aside className="management-sidebar">
@@ -16,8 +15,9 @@ export default async function ManagementLayout({ children }: { children: React.R
         <p className="management-label">GESTÃO</p>
         <nav>
           <a href="/painel">Visão geral</a>
-          {canManageUsers && <a href="/painel/usuarios">Usuários e equipe</a>}
-          {canManageUsers && <a href="/painel/faturamento">Faturamento</a>}
+          <a href="/painel/convites">Convites e códigos</a>
+          <a href="/painel/usuarios">Usuários e equipe</a>
+          <a href="/painel/faturamento">Faturamento</a>
           <a href="/painel/questoes">Questões cadastradas</a>
           <a href="/painel/conteudo">Conteúdo acadêmico</a>
           <a href="/ajuda">Guia de uso</a>

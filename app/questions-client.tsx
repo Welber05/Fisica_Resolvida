@@ -84,7 +84,8 @@ export default function QuestionsClient({
   );
   const [showSource, setShowSource] = useState(false);
   const [scriptQuestion, setScriptQuestion] = useState((curatedQuestions[0] ?? importedQuestions[0]).id);
-  const canManageContent = ['professor', 'manager', 'admin'].includes(currentUser.role);
+  const canUseTeacherTools = ['professor', 'manager', 'admin'].includes(currentUser.role);
+  const canManageContent = ['manager', 'admin'].includes(currentUser.role);
   const activeSchool = teacherSchools.find((school) => school.isActive) ?? teacherSchools[0] ?? null;
   const initials = (currentUser.fullName || currentUser.email)
     .split(/\s+/)
@@ -223,6 +224,7 @@ export default function QuestionsClient({
 
   function navigate(next: View) {
     if (next === 'cadastro' && !canManageContent) return;
+    if (next === 'roteiros' && !canUseTeacherTools) return;
     setView(next);
     setShowSource(false);
   }
@@ -450,12 +452,14 @@ export default function QuestionsClient({
           >
             Gerador de provas
           </button>
-          <button
-            className={view === 'roteiros' ? 'on' : ''}
-            onClick={() => navigate('roteiros')}
-          >
-            Roteiros
-          </button>
+          {canUseTeacherTools && (
+            <button
+              className={view === 'roteiros' ? 'on' : ''}
+              onClick={() => navigate('roteiros')}
+            >
+              Roteiros
+            </button>
+          )}
           {canManageContent && (
             <button
               className={view === 'cadastro' ? 'on' : ''}
@@ -910,7 +914,7 @@ export default function QuestionsClient({
         </section>
       )}
 
-      {view === 'roteiros' && (
+      {view === 'roteiros' && canUseTeacherTools && (
         <section className="page scripts-page">
           <div className="page-title">
             <p className="eyebrow">ESTÚDIO DE CONTEÚDO</p>

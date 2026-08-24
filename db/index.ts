@@ -246,6 +246,26 @@ async function initializeSchema() {
     )`,
     'CREATE INDEX IF NOT EXISTS idx_question_curations_visibility ON question_curations(visibility_status)',
     'CREATE INDEX IF NOT EXISTS idx_question_curations_updated ON question_curations(updated_at)',
+    `CREATE TABLE IF NOT EXISTS access_invites (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL,
+      email TEXT,
+      role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user','professor','manager','admin')),
+      professional_type TEXT NOT NULL DEFAULT 'student' CHECK (professional_type IN ('student','teacher','education_professional')),
+      license_type TEXT NOT NULL DEFAULT 'gratuito',
+      max_uses INTEGER NOT NULL DEFAULT 1,
+      used_count INTEGER NOT NULL DEFAULT 0,
+      expires_at INTEGER,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','inactive','expired','exhausted')),
+      notes TEXT NOT NULL DEFAULT '',
+      created_by TEXT REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    )`,
+    'CREATE UNIQUE INDEX IF NOT EXISTS idx_access_invites_code ON access_invites(code)',
+    'CREATE INDEX IF NOT EXISTS idx_access_invites_email ON access_invites(email)',
+    'CREATE INDEX IF NOT EXISTS idx_access_invites_status ON access_invites(status)',
   ];
 
   await db.batch(statements.map((statement) => db.prepare(statement)));

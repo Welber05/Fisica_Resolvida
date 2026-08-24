@@ -5,7 +5,7 @@ import { listAcademicContentItems, listQuestionCurations, requirePageUser } from
 export const dynamic = 'force-dynamic';
 
 export default async function AcademicContentPage() {
-  await requirePageUser('/painel/conteudo', { roles: ['admin', 'manager', 'professor'] });
+  await requirePageUser('/painel/conteudo', { roles: ['admin', 'manager'] });
   return (
     <ContentManager
       initialItems={await listAcademicContentItems()}

@@ -17,6 +17,7 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
     const payload = {
       fullName: form.get('fullName'),
       email: initialUser.email,
+      inviteCode: form.get('inviteCode'),
       phone: form.get('phone'),
       educationLevel: form.get('educationLevel'),
       professionalType: form.get('professionalType'),
@@ -49,7 +50,7 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as { user?: SafeUser; error?: string };
       if (!response.ok) throw new Error(data.error || 'Não foi possível salvar o cadastro.');
 
       const avatar = form.get('avatar');
@@ -60,7 +61,7 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
         const avatarData = (await avatarResponse.json()) as { error?: string };
         if (!avatarResponse.ok) throw new Error(avatarData.error || 'Cadastro salvo, mas a imagem não foi enviada.');
       }
-      window.location.href = initialUser.role === 'user' ? '/acervo' : '/painel';
+      window.location.href = data.user && ['manager', 'admin'].includes(data.user.role) ? '/painel' : '/acervo';
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Ocorreu um erro inesperado.');
       setBusy(false);
@@ -90,6 +91,12 @@ export default function OnboardingForm({ initialUser }: { initialUser: SafeUser 
             <p className="eyebrow">DADOS OBRIGATÓRIOS</p><h2>Informações pessoais</h2>
             <p>O e-mail vem da identidade usada no login e não pode ser alterado aqui.</p>
             <div className="account-grid">
+              {initialUser.role === 'user' && !initialUser.profileComplete && (
+                <label className="wide">Código de acesso
+                  <input name="inviteCode" required placeholder="Ex.: FR-TURMA-2026" autoComplete="off" />
+                  <small>Solicite o código ao administrador da plataforma. Ele define se seu perfil será aluno, professor, gerente ou administrador.</small>
+                </label>
+              )}
               <label className="wide">Nome completo<input name="fullName" required minLength={3} defaultValue={initialUser.fullName} /></label>
               <label>E-mail<input name="email" type="email" value={initialUser.email} readOnly /></label>
               <label>Telefone com DDD<input name="phone" required placeholder="(11) 99999-9999" defaultValue={initialUser.phone} /></label>

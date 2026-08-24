@@ -6,6 +6,6 @@ export const dynamic = 'force-dynamic';
 
 export default async function RegistrationPage() {
   const { user } = await requirePageUser('/cadastro', { allowIncomplete: true });
-  if (user.profileComplete) redirect('/acervo');
+  if (user.profileComplete) redirect(['manager', 'admin'].includes(user.role) ? '/painel' : '/acervo');
   return <OnboardingForm initialUser={safeUser(user)} />;
 }

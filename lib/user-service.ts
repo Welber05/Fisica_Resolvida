@@ -6,6 +6,8 @@ import { CODEX_ACTOR_ID, ensureSchema, getD1, getInitialAdminEmail } from '@/db'
 import type {
   AccountStatus,
   AccountType,
+  AccessInvite,
+  AccessInviteStatus,
   AppRole,
   AppUser,
   AcademicContentItem,
@@ -166,6 +168,23 @@ type QuestionCurationRow = {
   created_at: number;
   updated_at: number;
   deleted_at: number | null;
+};
+
+type AccessInviteRow = {
+  id: string;
+  code: string;
+  email: string | null;
+  role: AppRole;
+  professional_type: ProfessionalType;
+  license_type: string;
+  max_uses: number;
+  used_count: number;
+  expires_at: number | null;
+  status: AccessInviteStatus;
+  notes: string | null;
+  created_by: string | null;
+  created_at: number;
+  updated_at: number;
 };
 
 export class ApiAccessError extends Error {
@@ -407,6 +426,71 @@ export async function listQuestionCurations(): Promise<QuestionCuration[]> {
     .prepare('SELECT * FROM question_curations ORDER BY updated_at DESC')
     .all<QuestionCurationRow>();
   return result.results.map(mapQuestionCuration);
+}
+
+export async function listAccessInvites(): Promise<AccessInvite[]> {
+  await ensureSchema();
+  const result = await getD1()
+    .prepare(
+      `SELECT * FROM access_invites
+       WHERE deleted_at IS NULL
+       ORDER BY status = 'active' DESC, updated_at DESC
+       LIMIT 500`,
+    )
+    .all<AccessInviteRow>();
+  return result.results.map(mapAccessInvite);
+}
+
+export async function validateAndApplyInvite(user: AppUser, rawCode: unknown) {
+  await ensureSchema();
+  const code = normalizeInviteCode(rawCode);
+  if (!code) throw new ApiAccessError(400, 'Informe um código de acesso válido.');
+  const db = getD1();
+  const invite = await db
+    .prepare('SELECT * FROM access_invites WHERE code = ? AND deleted_at IS NULL LIMIT 1')
+    .bind(code)
+    .first<AccessInviteRow>();
+  if (!invite) throw new ApiAccessError(404, 'Código de acesso não encontrado.');
+  if (invite.status !== 'active') throw new ApiAccessError(403, 'Este código de acesso não está ativo.');
+  if (invite.expires_at && invite.expires_at <= Date.now()) {
+    await db.prepare("UPDATE access_invites SET status = 'expired', updated_at = ? WHERE id = ?")
+      .bind(Date.now(), invite.id)
+      .run();
+    throw new ApiAccessError(403, 'Este código de acesso expirou.');
+  }
+  if (invite.used_count >= invite.max_uses) {
+    await db.prepare("UPDATE access_invites SET status = 'exhausted', updated_at = ? WHERE id = ?")
+      .bind(Date.now(), invite.id)
+      .run();
+    throw new ApiAccessError(403, 'Este código de acesso já atingiu o limite de uso.');
+  }
+  const invitedEmail = invite.email?.trim().toLowerCase();
+  if (invitedEmail && invitedEmail !== user.email) {
+    throw new ApiAccessError(403, 'Este código de acesso foi emitido para outro e-mail.');
+  }
+
+  const now = Date.now();
+  const nextUsedCount = invite.used_count + 1;
+  const nextStatus: AccessInviteStatus = nextUsedCount >= invite.max_uses ? 'exhausted' : 'active';
+  const nextProfessionalType = invite.role === 'user' ? 'student' : invite.professional_type;
+  const nextEducatorStatus = nextProfessionalType === 'student' ? 'not_requested' : 'approved';
+  await db.batch([
+    db
+      .prepare(
+        `UPDATE users SET role = ?, professional_type = ?,
+          educator_verification_status = ?, updated_by = ?, updated_at = ?
+         WHERE id = ?`,
+      )
+      .bind(invite.role, nextProfessionalType, nextEducatorStatus, CODEX_ACTOR_ID, now, user.id),
+    db
+      .prepare('UPDATE access_invites SET used_count = ?, status = ?, updated_at = ? WHERE id = ?')
+      .bind(nextUsedCount, nextStatus, now, invite.id),
+  ]);
+  await writeAudit(CODEX_ACTOR_ID, user.id, 'invite.redeemed', {
+    inviteId: invite.id,
+    role: invite.role,
+    licenseType: invite.license_type,
+  });
 }
 
 export async function dashboardMetrics() {
@@ -682,6 +766,25 @@ function mapQuestionCuration(row: QuestionCurationRow): QuestionCuration {
   };
 }
 
+function mapAccessInvite(row: AccessInviteRow): AccessInvite {
+  return {
+    id: row.id,
+    code: row.code,
+    email: row.email ?? '',
+    role: row.role,
+    professionalType: row.professional_type,
+    licenseType: row.license_type,
+    maxUses: row.max_uses,
+    usedCount: row.used_count,
+    expiresAt: row.expires_at,
+    status: row.status,
+    notes: row.notes ?? '',
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
 function mapBilling(row: BillingRow): BillingProfile {
   return {
     userId: row.user_id,
@@ -704,4 +807,8 @@ function mapBilling(row: BillingRow): BillingProfile {
     subscriptionStatus: row.subscription_status,
     updatedAt: row.updated_at,
   };
+}
+
+export function normalizeInviteCode(value: unknown) {
+  return String(value ?? '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '');
 }

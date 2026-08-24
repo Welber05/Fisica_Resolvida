@@ -275,3 +275,32 @@ export const questionCurations = sqliteTable(
     check('question_curations_visibility_check', sql`${table.visibilityStatus} IN ('active','inactive','deleted')`),
   ],
 );
+
+export const accessInvites = sqliteTable(
+  'access_invites',
+  {
+    id: text('id').primaryKey(),
+    code: text('code').notNull(),
+    email: text('email'),
+    role: text('role').notNull().default('user'),
+    professionalType: text('professional_type').notNull().default('student'),
+    licenseType: text('license_type').notNull().default('gratuito'),
+    maxUses: integer('max_uses').notNull().default(1),
+    usedCount: integer('used_count').notNull().default(0),
+    expiresAt: integer('expires_at'),
+    status: text('status').notNull().default('active'),
+    notes: text('notes').notNull().default(''),
+    createdBy: text('created_by').references(() => users.id),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    deletedAt: integer('deleted_at'),
+  },
+  (table) => [
+    uniqueIndex('idx_access_invites_code').on(table.code),
+    index('idx_access_invites_email').on(table.email),
+    index('idx_access_invites_status').on(table.status),
+    check('access_invites_role_check', sql`${table.role} IN ('user','professor','manager','admin')`),
+    check('access_invites_professional_type_check', sql`${table.professionalType} IN ('student','teacher','education_professional')`),
+    check('access_invites_status_check', sql`${table.status} IN ('active','inactive','expired','exhausted')`),
+  ],
+);
