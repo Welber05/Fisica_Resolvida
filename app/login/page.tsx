@@ -1,5 +1,4 @@
 import { chatGPTSignInPath } from '@/app/chatgpt-auth';
-import LoginForm from './login-form';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +18,9 @@ export default async function LoginPage() {
         <div className="secure-mark">✓</div>
         <p className="eyebrow">IDENTIDADE SEGURA</p>
         <h2>Entrar na Física Resolvida</h2>
-        <p>Entre com o e-mail e a senha cadastrados no painel de gestão.</p>
-        <LoginForm />
-        <div className="login-divider"><span>ou</span></div>
-        <a className="auth-cta secondary" href={chatGPTSignInPath('/cadastro')}>Continuar com ChatGPT <span>→</span></a>
-        <small>Na primeira entrada, você preencherá seu perfil obrigatório e poderá adicionar informações profissionais opcionais.</small>
+        <p>O acesso agora é feito somente pela identidade segura do ChatGPT/Google. Não há mais login por e-mail e senha próprio do site.</p>
+        <a className="auth-cta" href={chatGPTSignInPath('/cadastro')}>Continuar com ChatGPT / Google <span>→</span></a>
+        <small>Na primeira entrada, alunos e professores convidados completam os dados obrigatórios. Administradores já cadastrados são direcionados ao painel.</small>
         <div className="legal-links"><a href="/termos">Termos de Uso</a><a href="/privacidade">Privacidade</a></div>
       </section>
     </main>

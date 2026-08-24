@@ -36,10 +36,6 @@ export async function ensureSchema() {
 
 async function initializeSchema() {
   const db = getD1();
-  const fabioInitialPasswordHash =
-    'pbkdf2:SHA-256:120000:4b230985d6563be50a71e1029cc81118:eb33b587435e1cabcc80dc12ab5f82ff14645115eb9ff3dceebd7b1a93dd74c5';
-  const welberInitialPasswordHash =
-    'pbkdf2:SHA-256:120000:b60d343a10ed1f4b8c924f0eef2bce0b:65f7e32e724379e1cc323dc366aa1b8dc63ef9386f17f8629fdc24e3949f6924';
   const statements = [
     `CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -355,7 +351,7 @@ async function initializeSchema() {
         `INSERT INTO users (
           id, email, full_name, phone, education_level, account_type,
           role, status, professional_type, educator_verification_status,
-          institutional_email, functional_id, cpf, password_hash,
+          institutional_email, functional_id, cpf,
           profile_complete, privacy_accepted_at,
           lattes_url, orcid, social_links_json,
           address_postal_code, address_street, address_number,
@@ -365,7 +361,7 @@ async function initializeSchema() {
         ) VALUES (
           'owner-welber-admin', 'welber05@gmail.com', 'Welber Merlin Cardoso', '+5527997886378',
           'professor', 'human', 'admin', 'active', 'education_professional',
-          'approved', 'welber.mcardoso@educador.edu.es.gov.br', '3682609', '08410974703', ?,
+          'approved', 'welber.mcardoso@educador.edu.es.gov.br', '3682609', '08410974703',
           1, ?, 'http://lattes.cnpq.br/5720432646721315', '0000-0001-8755-9859',
           '{"instagram":"https://www.instagram.com/welbermerlincardoso/","youtube":"https://www.youtube.com/@WelberMerlinCardoso","linkedin":"https://www.linkedin.com/in/welbermcardoso/","facebook":"https://www.facebook.com/welber05","x":"https://x.com/welber05"}',
           '29830000', 'Rua P', '393', 'casa', 'Aeroporto', 'Nova Venécia', 'Espírito Santo', 'Brasil',
@@ -384,7 +380,7 @@ async function initializeSchema() {
           institutional_email = excluded.institutional_email,
           functional_id = excluded.functional_id,
           cpf = excluded.cpf,
-          password_hash = excluded.password_hash,
+          password_hash = NULL,
           profile_complete = 1,
           privacy_accepted_at = COALESCE(users.privacy_accepted_at, excluded.privacy_accepted_at),
           lattes_url = excluded.lattes_url,
@@ -403,7 +399,7 @@ async function initializeSchema() {
           updated_at = excluded.updated_at
         `,
       )
-      .bind(welberInitialPasswordHash, now, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
+      .bind(now, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
     db
       .prepare(
         `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)
@@ -424,7 +420,7 @@ async function initializeSchema() {
           'professor-fabio-honorio', 'fabiohoronorio@msn.com', 'Fábio Honório', '',
           'professor', 'human', 'professor', 'active',
           'Cadastro professor solicitado por Welber. Acesso via login seguro do site; senha simples não armazenada.',
-          'teacher', 'approved', 0, ?, ?, ?, ?, ?
+          'teacher', 'approved', 0, NULL, ?, ?, ?, ?
         )
         ON CONFLICT(email) DO UPDATE SET
           full_name = excluded.full_name,
@@ -432,16 +428,16 @@ async function initializeSchema() {
           status = 'active',
           professional_type = 'teacher',
           educator_verification_status = 'approved',
-          password_hash = COALESCE(users.password_hash, excluded.password_hash),
+          password_hash = NULL,
           updated_by = excluded.updated_by,
           updated_at = excluded.updated_at
         `,
       )
-      .bind(fabioInitialPasswordHash, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
+      .bind(CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now),
     db
       .prepare(
         `INSERT INTO audit_logs (actor_user_id, target_user_id, action, details_json, created_at)
-         SELECT ?, 'professor-fabio-honorio', 'user.professor_reserved', '{"email":"fabiohoronorio@msn.com","passwordStored":true}', ?
+           SELECT ?, 'professor-fabio-honorio', 'user.professor_reserved', '{"email":"fabiohoronorio@msn.com","passwordStored":false}', ?
          WHERE NOT EXISTS (
            SELECT 1 FROM audit_logs WHERE action = 'user.professor_reserved'
          )`,
