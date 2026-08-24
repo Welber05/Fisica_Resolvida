@@ -45,8 +45,8 @@ export default function Home() {
         <nav aria-label="Navegação principal">
           <a href="mailto:welber05@gmail.com?subject=Contato%20-%20F%C3%ADsica%20Resolvida">Contato por e-mail</a>
           <a href="https://wa.me/5527997886378" target="_blank" rel="noreferrer">WhatsApp</a>
-          <Link href="/sobre">Sobre</Link>
-          <Link className="landing-login" href="/login">Cadastrar / Login</Link>
+          <a href="/sobre">Sobre</a>
+          <a className="landing-login" href="/login">Cadastrar / Login</a>
         </nav>
       </header>
 
@@ -67,7 +67,9 @@ export default function Home() {
           <p className="eyebrow">ACERVO · PROVAS · ROTEIROS</p>
           <h1>Física Resolvida</h1>
           <p>Uma plataforma para praticar questões, montar provas, organizar classificações e transformar resolução em aprendizagem.</p>
-          <Link className="landing-cta" href="/login">Entrar no sistema <span>→</span></Link>
+          <form action="/login" method="get">
+            <button className="landing-cta" type="submit">Entrar no sistema <span>→</span></button>
+          </form>
         </div>
       </section>
     </main>
