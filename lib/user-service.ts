@@ -201,6 +201,16 @@ export async function getOrCreateUser(identity: ChatGPTUser): Promise<AppUser> {
   const db = getD1();
   const normalizedEmail = identity.email.trim().toLowerCase();
 
+  if (identity.userId.startsWith('local:')) {
+    const localUserId = identity.userId.slice('local:'.length);
+    const localRow = await db
+      .prepare("SELECT * FROM users WHERE account_type = 'human' AND id = ? AND email = ? AND deleted_at IS NULL LIMIT 1")
+      .bind(localUserId, normalizedEmail)
+      .first<UserRow>();
+    if (!localRow) throw new ApiAccessError(401, 'Sessão local inválida. Entre novamente.');
+    return mapUser(localRow);
+  }
+
   let row = await db
     .prepare("SELECT * FROM users WHERE account_type = 'human' AND auth_user_id = ? AND deleted_at IS NULL LIMIT 1")
     .bind(identity.userId)
@@ -213,11 +223,11 @@ export async function getOrCreateUser(identity: ChatGPTUser): Promise<AppUser> {
       .first<UserRow>();
 
     if (row) {
-      if (row.auth_user_id && row.auth_user_id !== identity.userId) {
+      if (row.auth_user_id && row.auth_user_id !== identity.userId && !row.auth_user_id.startsWith('local:')) {
         throw new ApiAccessError(409, 'Este e-mail já está vinculado a outra identidade.');
       }
       await db
-        .prepare('UPDATE users SET auth_user_id = ?, updated_at = ? WHERE id = ? AND auth_user_id IS NULL')
+        .prepare("UPDATE users SET auth_user_id = ?, updated_at = ? WHERE id = ? AND (auth_user_id IS NULL OR auth_user_id LIKE 'local:%')")
         .bind(identity.userId, Date.now(), row.id)
         .run();
       row.auth_user_id = identity.userId;
