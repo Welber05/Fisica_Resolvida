@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { dashboardMetrics, recentAuditLogs, requirePageUser } from '@/lib/user-service';
 import { roleLabels } from '@/lib/user-types';
 import { importedQuestions } from '@/app/questions';
@@ -22,10 +21,10 @@ export default async function DashboardPage() {
       </section>
       <section className="dashboard-columns">
         <article className="dashboard-panel"><header><div><p className="eyebrow">ACESSOS RÁPIDOS</p><h2>Operação da plataforma</h2></div></header><div className="quick-grid">
-          {canManageUsers && <Link href="/painel/usuarios"><span>01</span><strong>Usuários e equipe</strong><p>Cadastrar, editar, atribuir papéis e controlar o acesso.</p><b>Gerenciar →</b></Link>}
-          {canManageUsers && <Link href="/painel/faturamento"><span>02</span><strong>Faturamento</strong><p>Consultar perfis financeiros e preparar futuras assinaturas.</p><b>Acessar →</b></Link>}
-          <Link href="/painel/conteudo"><span>{canManageUsers ? '03' : '01'}</span><strong>Conteúdo acadêmico</strong><p>Gerenciar lotes, provas, roteiros e videoaulas.</p><b>Gerenciar →</b></Link>
-          <Link href="/conta"><span>{canManageUsers ? '04' : '02'}</span><strong>Minha conta</strong><p>Perfil, endereço, imagem e faturamento pessoal.</p><b>Editar →</b></Link>
+          {canManageUsers && <a href="/painel/usuarios"><span>01</span><strong>Usuários e equipe</strong><p>Cadastrar, editar, atribuir papéis e controlar o acesso.</p><b>Gerenciar →</b></a>}
+          {canManageUsers && <a href="/painel/faturamento"><span>02</span><strong>Faturamento</strong><p>Consultar perfis financeiros e preparar futuras assinaturas.</p><b>Acessar →</b></a>}
+          <a href="/painel/conteudo"><span>{canManageUsers ? '03' : '01'}</span><strong>Conteúdo acadêmico</strong><p>Gerenciar lotes, provas, roteiros e videoaulas.</p><b>Gerenciar →</b></a>
+          <a href="/conta"><span>{canManageUsers ? '04' : '02'}</span><strong>Minha conta</strong><p>Perfil, endereço, imagem e faturamento pessoal.</p><b>Editar →</b></a>
         </div></article>
         <aside className="dashboard-panel compact"><header><p className="eyebrow">SEGURANÇA E AUDITORIA</p><h2>{canManageUsers ? 'Atividade recente' : 'Seu nível de acesso'}</h2></header>
           {canManageUsers ? <div className="audit-list">{logs.length ? logs.map((log) => <div key={log.id}><span>{new Date(log.createdAt).toLocaleDateString('pt-BR')}</span><p><strong>{auditLabel(log.action)}</strong><small>{log.actorName} → {log.targetName}</small></p></div>) : <p className="empty-note">As ações administrativas aparecerão aqui.</p>}</div> : <div className="role-summary"><span>PROFESSOR</span><p>Você pode acessar o painel, cadastrar questões, usar o gerador e preparar roteiros. Dados pessoais de usuários ficam restritos à gestão.</p></div>}

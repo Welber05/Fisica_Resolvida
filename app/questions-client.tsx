@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { importedQuestions, Question } from './questions';
 import type { SafeUser, TeacherSchool } from '@/lib/user-types';
@@ -473,14 +474,14 @@ export default function QuestionsClient({
   return (
     <main>
       <header className="topbar">
-        <button className="brand" onClick={() => navigate('questoes')}>
+        <Link className="brand" href="/" prefetch={false} aria-label="Ir para a página inicial">
           <span>φ</span>
           <strong>
             Física
             <br />
             <em>Resolvida</em>
           </strong>
-        </button>
+        </Link>
         <nav>
           <button
             className={view === 'questoes' ? 'on' : ''}
