@@ -196,6 +196,12 @@ export class ApiAccessError extends Error {
   }
 }
 
+export const OWNER_EMAIL = 'welber05@gmail.com';
+
+export function isOwnerEmail(email: string) {
+  return email.trim().toLowerCase() === OWNER_EMAIL;
+}
+
 export async function getOrCreateUser(identity: ChatGPTUser): Promise<AppUser> {
   await ensureSchema();
   const db = getD1();
@@ -209,6 +215,11 @@ export async function getOrCreateUser(identity: ChatGPTUser): Promise<AppUser> {
       .first<UserRow>();
     if (!localRow) throw new ApiAccessError(401, 'Sessão local inválida. Entre novamente.');
     return mapUser(localRow);
+  }
+
+  if (isOwnerEmail(normalizedEmail)) {
+    const owner = await getOrCreateOwnerUser(db, identity);
+    return mapUser(owner);
   }
 
   let row = await db
@@ -281,6 +292,66 @@ export async function getOrCreateUser(identity: ChatGPTUser): Promise<AppUser> {
   }
 
   return mapUser(row);
+}
+
+async function getOrCreateOwnerUser(db: D1Database, identity: ChatGPTUser): Promise<UserRow> {
+  const normalizedEmail = identity.email.trim().toLowerCase();
+  const now = Date.now();
+  let row = await db
+    .prepare("SELECT * FROM users WHERE account_type = 'human' AND email = ? AND deleted_at IS NULL LIMIT 1")
+    .bind(normalizedEmail)
+    .first<UserRow>();
+
+  if (!row) {
+    row = await db
+      .prepare("SELECT * FROM users WHERE account_type = 'human' AND auth_user_id = ? AND deleted_at IS NULL LIMIT 1")
+      .bind(identity.userId)
+      .first<UserRow>();
+  }
+
+  if (row) {
+    await db
+      .prepare(
+        `UPDATE users SET
+          auth_user_id = ?, email = ?, full_name = CASE WHEN full_name = '' THEN ? ELSE full_name END,
+          phone = CASE WHEN phone = '' THEN '+5527997886378' ELSE phone END,
+          education_level = CASE WHEN education_level = '' THEN 'professor' ELSE education_level END,
+          role = 'admin', status = 'active', status_reason = NULL, suspended_until = NULL,
+          professional_type = CASE WHEN professional_type = 'student' THEN 'education_professional' ELSE professional_type END,
+          educator_verification_status = 'approved',
+          profile_complete = 1,
+          privacy_accepted_at = COALESCE(privacy_accepted_at, ?),
+          updated_by = ?, updated_at = ?
+         WHERE id = ?`,
+      )
+      .bind(identity.userId, normalizedEmail, identity.fullName ?? 'Welber', now, CODEX_ACTOR_ID, now, row.id)
+      .run();
+    const refreshed = await db.prepare('SELECT * FROM users WHERE id = ?').bind(row.id).first<UserRow>();
+    if (!refreshed) throw new Error('Não foi possível recarregar o administrador proprietário.');
+    return refreshed;
+  }
+
+  const id = 'owner-welber-admin';
+  await db
+    .prepare(
+      `INSERT INTO users (
+        id, auth_user_id, email, full_name, phone, education_level, account_type,
+        role, status, professional_type, educator_verification_status,
+        profile_complete, privacy_accepted_at,
+        created_by, updated_by, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, '+5527997886378', 'professor', 'human', 'admin', 'active',
+        'education_professional', 'approved', 1, ?, ?, ?, ?, ?)`,
+    )
+    .bind(id, identity.userId, normalizedEmail, identity.fullName ?? 'Welber', now, CODEX_ACTOR_ID, CODEX_ACTOR_ID, now, now)
+    .run();
+  const created = await db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first<UserRow>();
+  if (!created) throw new Error('Não foi possível criar o administrador proprietário.');
+  await writeAudit(CODEX_ACTOR_ID, created.id, 'user.owner_welber_reserved', {
+    email: OWNER_EMAIL,
+    role: 'admin',
+    status: 'active',
+  });
+  return created;
 }
 
 export async function requirePageUser(

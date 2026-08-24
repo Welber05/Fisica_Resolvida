@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { ensureSchema, getD1 } from '@/db';
-import { getUserById, requireApiUser, safeUser, validateAndApplyInvite, writeAudit } from '@/lib/user-service';
+import { getUserById, isOwnerEmail, requireApiUser, safeUser, validateAndApplyInvite, writeAudit } from '@/lib/user-service';
 import { assertSameOrigin, jsonError, validateProfilePayload, ValidationError } from '@/lib/validation';
 import { LEGAL_DOCUMENT_VERSION } from '@/lib/legal';
 
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       throw new ValidationError('É necessário aceitar os termos e a política de privacidade.');
     }
     const profile = validateProfilePayload(body, identity.email);
-    const mustUseInvite = user.role === 'user' && !user.profileComplete;
+    const mustUseInvite = user.role === 'user' && !user.profileComplete && !isOwnerEmail(identity.email);
     if (mustUseInvite) await validateAndApplyInvite(user, body.inviteCode);
     const now = Date.now();
     const invitedUser = mustUseInvite ? await getUserById(user.id) : user;

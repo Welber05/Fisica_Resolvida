@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import OnboardingForm from './onboarding-form';
 import { requireChatGPTUser, type ChatGPTUser } from '@/app/chatgpt-auth';
-import { getOrCreateUser, safeUser } from '@/lib/user-service';
+import { getOrCreateUser, isOwnerEmail, safeUser } from '@/lib/user-service';
 import type { AppUser, SafeUser } from '@/lib/user-types';
 
 export const dynamic = 'force-dynamic';
@@ -25,6 +25,7 @@ export default async function RegistrationPage() {
 
 function identityToPendingUser(identity: ChatGPTUser): SafeUser {
   const now = Date.now();
+  const owner = isOwnerEmail(identity.email);
   return {
     id: 'pending-profile',
     email: identity.email,
@@ -32,12 +33,12 @@ function identityToPendingUser(identity: ChatGPTUser): SafeUser {
     phone: '',
     educationLevel: '',
     accountType: 'human',
-    role: 'user',
+    role: owner ? 'admin' : 'user',
     status: 'active',
     statusReason: null,
     suspendedUntil: null,
-    professionalType: 'student',
-    educatorVerificationStatus: 'not_requested',
+    professionalType: owner ? 'education_professional' : 'student',
+    educatorVerificationStatus: owner ? 'approved' : 'not_requested',
     institutionalEmail: null,
     functionalId: null,
     cpf: null,
