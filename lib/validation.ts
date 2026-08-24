@@ -138,17 +138,13 @@ export function validateAdminUserPayload(value: unknown, allowedRoles: AppRole[]
   const socialInput = objectValue(input.socialLinks ?? {});
   const socialLinks: SocialLinks = {};
   for (const network of ['instagram', 'youtube', 'linkedin', 'facebook', 'x'] as const) {
-    const url = optionalUrl(socialInput[network], `URL de ${network}`);
+    const url = optionalAdminUrl(socialInput[network]);
     if (url) socialLinks[network] = url;
   }
-  const lattesUrl = optionalUrl(input.lattesUrl, 'Currículo Lattes');
-  if (lattesUrl && new URL(lattesUrl).hostname !== 'lattes.cnpq.br') {
-    throw new ValidationError('Informe um endereço válido do domínio lattes.cnpq.br.');
-  }
+  const lattesUrl = optionalAdminUrl(input.lattesUrl);
+  const validLattesUrl = lattesUrl && new URL(lattesUrl).hostname === 'lattes.cnpq.br' ? lattesUrl : '';
   const orcid = optionalText(input.orcid, 30).toUpperCase();
-  if (orcid && !isValidOrcid(orcid)) {
-    throw new ValidationError('Informe um ORCID válido no formato 0000-0000-0000-0000.');
-  }
+  const validOrcid = orcid && isValidOrcid(orcid) ? orcid : '';
   return {
     role,
     fullName: requiredText(input.fullName, 'nome', 3, 120),
@@ -158,9 +154,9 @@ export function validateAdminUserPayload(value: unknown, allowedRoles: AppRole[]
     professionalType: role === 'user' ? 'student' : professionalType,
     institutionalEmail: optionalEmail(input.institutionalEmail, 'e-mail institucional') || null,
     functionalId: optionalText(input.functionalId, 60) || null,
-    cpf: optionalCpf(input.cpf) || null,
-    lattesUrl: lattesUrl || null,
-    orcid: orcid || null,
+    cpf: optionalCpf(input.cpf, true) || null,
+    lattesUrl: validLattesUrl || null,
+    orcid: validOrcid || null,
     socialLinks,
     address: {
       postalCode: optionalText(input.addressPostalCode, 12),
@@ -242,10 +238,11 @@ function optionalEmail(value: unknown, label: string) {
   return email;
 }
 
-function optionalCpf(value: unknown) {
+function optionalCpf(value: unknown, ignoreInvalid = false) {
   const cpf = String(value ?? '').replace(/\D/g, '');
   if (!cpf) return '';
   if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) {
+    if (ignoreInvalid) return '';
     throw new ValidationError('Informe um CPF válido com 11 dígitos ou deixe em branco.');
   }
   return cpf;
@@ -260,6 +257,19 @@ function optionalUrl(value: unknown, label: string) {
     return url.toString();
   } catch {
     throw new ValidationError(`${label}: informe uma URL válida.`);
+  }
+}
+
+function optionalAdminUrl(value: unknown) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  const candidate = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+  try {
+    const url = new URL(candidate);
+    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname.includes('.')) return '';
+    return url.toString();
+  } catch {
+    return '';
   }
 }
 

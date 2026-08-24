@@ -12,7 +12,7 @@ import { createPasswordHash } from '@/lib/local-auth';
 import {
   assertSameOrigin,
   jsonError,
-  validateProfilePayload,
+  validateAdminUserPayload,
   validateRole,
   validateStatusPayload,
   ValidationError,
@@ -38,7 +38,10 @@ export async function PATCH(
 
     if (operation === 'profile') {
       if (!canManageTarget(actor, target)) throw new ApiAccessError(403, 'Alteração não autorizada.');
-      const profile = validateProfilePayload({ ...body, email: target.email }, target.email);
+      const allowedRoles: AppRole[] = actor.role === 'admin'
+        ? ['user', 'professor', 'manager', 'admin']
+        : ['user', 'professor'];
+      const profile = validateAdminUserPayload({ ...body, email: target.email, role: target.role }, allowedRoles);
       await db
         .prepare(
           `UPDATE users SET full_name = ?, phone = ?, education_level = ?,
