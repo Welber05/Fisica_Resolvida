@@ -5,11 +5,15 @@ export const dynamic = 'force-dynamic';
 
 export default async function BillingManagementPage() {
   await requirePageUser('/painel/faturamento', { roles: ['admin', 'manager'] });
+  let profiles = [], plans = [], paymentMethods = [];
+  try {
+    [profiles, plans, paymentMethods] = await Promise.all([listBillingProfiles(), listBillingPlans(), listPaymentMethods()]);
+  } catch (error) { console.warn('Faturamento indisponível para leitura:', error); }
   return (
     <BillingManager
-      initialProfiles={await listBillingProfiles()}
-      initialPlans={await listBillingPlans()}
-      initialPaymentMethods={await listPaymentMethods()}
+      initialProfiles={profiles}
+      initialPlans={plans}
+      initialPaymentMethods={paymentMethods}
     />
   );
 }

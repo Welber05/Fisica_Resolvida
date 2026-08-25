@@ -5,5 +5,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function InvitesPage() {
   const { user } = await requirePageUser('/painel/convites', { roles: ['admin', 'manager'] });
-  return <InvitesManager initialInvites={await listAccessInvites()} actorRole={user.role as 'admin' | 'manager'} />;
+  let invites = [];
+  try { invites = await listAccessInvites(); } catch (error) { console.warn('Convites indisponíveis para leitura:', error); }
+  return <InvitesManager initialInvites={invites} actorRole={user.role as 'admin' | 'manager'} />;
 }

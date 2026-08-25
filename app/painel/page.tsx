@@ -6,8 +6,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const { user } = await requirePageUser('/painel', { roles: ['admin', 'manager'] });
-  const metrics = await dashboardMetrics();
-  const logs = await recentAuditLogs();
+  let metrics = { users: 0, active: 0, staff: 0, restricted: 0, billing: 0 };
+  let logs: Awaited<ReturnType<typeof recentAuditLogs>> = [];
+  try {
+    [metrics, logs] = await Promise.all([dashboardMetrics(), recentAuditLogs()]);
+  } catch (error) {
+    console.warn('Painel público em modo somente leitura:', error);
+  }
   return (
     <main className="dashboard-page">
       <div className="dashboard-heading"><div><p className="eyebrow">BEM-VINDO, {roleLabels[user.role].toUpperCase()}</p><h1>Central de gestão</h1><p>Acompanhe cadastros, acessos, faturamento e conteúdo acadêmico.</p></div><span>{new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}</span></div>
