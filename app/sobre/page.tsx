@@ -10,7 +10,7 @@ export default function AboutPage() {
         </Link>
         <nav aria-label="Navegação principal">
           <a href="mailto:welber05@gmail.com?subject=Contato%20-%20F%C3%ADsica%20Resolvida">Contato</a>
-          <Link href="/login">Cadastrar / Login</Link>
+          <Link href="/acervo">Acessar acervo</Link>
         </nav>
       </header>
       <article className="about-card">
@@ -34,7 +34,7 @@ export default function AboutPage() {
           <p>Clareza, rigor, autoria, curadoria responsável e compromisso com a aprendizagem.</p>
         </section>
         <footer>
-          <Link className="primary" href="/login">Acessar a plataforma</Link>
+          <Link className="primary" href="/acervo">Acessar a plataforma</Link>
           <Link href="/">Voltar para a homepage</Link>
         </footer>
       </article>

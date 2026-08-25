@@ -21,11 +21,11 @@ export default function LandingAccessLink({
       return;
     }
     event.preventDefault();
-    window.location.assign('/login');
+    window.location.assign('/acervo');
   }
 
   return (
-    <a className={className} href="/login" target="_self" onClick={openLogin}>
+    <a className={className} href="/acervo" target="_self" onClick={openLogin}>
       {children}
     </a>
   );

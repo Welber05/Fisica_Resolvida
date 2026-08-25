@@ -4,7 +4,7 @@ import { LEGAL_DOCUMENT_VERSION, LEGAL_EFFECTIVE_DATE } from '@/lib/legal';
 export default function TermsPage() {
   return (
     <main className="legal-page">
-      <header><Link className="auth-brand light" href="/"><span>φ</span><strong>Física <em>Resolvida</em></strong></Link><Link href="/cadastro">← Voltar ao cadastro</Link></header>
+      <header><Link className="auth-brand light" href="/"><span>φ</span><strong>Física <em>Resolvida</em></strong></Link><Link href="/acervo">← Voltar ao acervo</Link></header>
       <article>
         <p className="eyebrow">VERSÃO {LEGAL_DOCUMENT_VERSION}</p>
         <h1>Termos de Uso</h1>
@@ -35,4 +35,3 @@ export default function TermsPage() {
     </main>
   );
 }
-

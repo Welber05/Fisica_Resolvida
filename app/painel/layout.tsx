@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { chatGPTSignOutPath } from '@/app/chatgpt-auth';
 import { requirePageUser } from '@/lib/user-service';
 import { roleLabels } from '@/lib/user-types';
 
@@ -23,7 +22,7 @@ export default async function ManagementLayout({ children }: { children: React.R
           <a href="/ajuda">Guia de uso</a>
         </nav>
         <div className="management-user"><div className="avatar">{user.avatarKey ? <img src={`/api/avatar/${user.id}`} alt="" /> : initials}</div><div><strong>{user.fullName}</strong><span>{roleLabels[user.role]}</span></div></div>
-        <div className="management-bottom"><a href="/conta">Minha conta</a><a href={chatGPTSignOutPath('/login')}>Sair</a></div>
+        <div className="management-bottom"><a href="/conta">Minha conta</a><a href="/acervo">Acervo público</a></div>
       </aside>
       <div className="management-main">
         <header className="management-top"><div><span>PAINEL DE GERENCIAMENTO</span><strong>Física Resolvida</strong></div><Link href="/acervo" prefetch={false}>← Voltar ao acervo</Link></header>

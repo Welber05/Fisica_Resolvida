@@ -1,7 +1,6 @@
 import 'server-only';
 
-import { redirect } from 'next/navigation';
-import { getChatGPTUser, requireChatGPTUser, type ChatGPTUser } from '@/app/chatgpt-auth';
+import { getChatGPTUser, type ChatGPTUser } from '@/app/chatgpt-auth';
 import { CODEX_ACTOR_ID, ensureSchema, getD1, getInitialAdminEmail } from '@/db';
 import type {
   AccountStatus,
@@ -197,6 +196,44 @@ export class ApiAccessError extends Error {
 }
 
 export const OWNER_EMAIL = 'welber05@gmail.com';
+// The current hosted version is intentionally available as a public showcase.
+// This synthetic identity lets server-rendered pages reuse the existing view
+// components without forcing visitors through the unfinished authentication flow.
+export const PUBLIC_VIEWER_IDENTITY: ChatGPTUser = {
+  userId: 'public-viewer',
+  email: 'visualizacao@fisicaresolvida.local',
+  fullName: 'Visitante',
+};
+export const PUBLIC_VIEWER_USER: AppUser = {
+  id: 'public-viewer',
+  authUserId: null,
+  email: PUBLIC_VIEWER_IDENTITY.email,
+  fullName: PUBLIC_VIEWER_IDENTITY.fullName ?? 'Visitante',
+  phone: '',
+  educationLevel: 'professor',
+  accountType: 'human',
+  role: 'admin',
+  status: 'active',
+  statusReason: null,
+  suspendedUntil: null,
+  professionalType: 'education_professional',
+  educatorVerificationStatus: 'approved',
+  institutionalEmail: null,
+  functionalId: null,
+  cpf: null,
+  profileComplete: true,
+  avatarKey: null,
+  lattesUrl: null,
+  orcid: null,
+  socialLinks: {},
+  address: {
+    postalCode: '', street: '', number: '', complement: '', neighborhood: '',
+    city: '', state: '', country: 'Brasil',
+  },
+  privacyAcceptedAt: Date.now(),
+  createdAt: Date.now(),
+  updatedAt: Date.now(),
+};
 const OWNER_SOCIAL_LINKS = {
   instagram: 'https://www.instagram.com/welbermerlincardoso/',
   youtube: 'https://www.youtube.com/@WelberMerlinCardoso',
@@ -440,14 +477,11 @@ export async function requirePageUser(
   returnTo: string,
   options: { roles?: AppRole[]; allowIncomplete?: boolean; allowRestricted?: boolean } = {},
 ) {
-  const identity = await requireChatGPTUser(returnTo);
-  const user = await getOrCreateUser(identity);
-
-  if (user.accountType === 'system') redirect('/acesso?status=blocked');
-  if (!options.allowRestricted && user.status !== 'active') redirect(`/acesso?status=${user.status}`);
-  if (!options.allowIncomplete && !user.profileComplete) redirect('/cadastro');
-  if (options.roles && !options.roles.includes(user.role)) redirect('/');
-  return { identity, user };
+  // Public showcase mode: page rendering must never redirect to login or
+  // cadastro. Role checks remain enforced by mutation APIs below.
+  void returnTo;
+  void options;
+  return { identity: PUBLIC_VIEWER_IDENTITY, user: PUBLIC_VIEWER_USER };
 }
 
 export async function requireApiUser(
